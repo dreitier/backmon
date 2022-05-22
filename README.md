@@ -46,7 +46,7 @@ A variable can be put on a *directory* pattern by using two curly braces (e.g. `
 Variables can be referenced in a *file* pattern with help of `${variable}`.
 
 ## Substitutions
-A substitution consists upon two characters, beginning with a percent sign `%`'.
+A substitution consists upon two characters, beginning with a percent sign `%`.
 They can be used on a *directory* and *file* pattern, to restrict the search to specific patterns.
 
 ### Usable substitutions and their equivalent regular epxressions

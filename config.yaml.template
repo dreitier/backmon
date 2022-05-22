@@ -1,0 +1,18 @@
+port: 8000
+log_level: debug
+update_interval: 30
+
+environments:
+  aws-test-environment:
+    access_key_id: AWS_ACCESS_KEY_1
+    secret_access_key: AWS_SECRET_ACCESS_KEY_1
+    region: eu-central-1
+
+  local-minio-environment:
+    access_key_id: MINIO_ACCESS_KEY_1
+    secret_access_key: MINIO_SECRET_ACCESS_KEY_1
+    force_path_style: true
+    endpoint: http://my-minio-endpoint:9000
+
+    local:
+        path: /mnt/backup

@@ -1,0 +1,12 @@
+[Unit]
+Description=Backup Metrics Exporter
+
+[Service]
+# root privileges required due to file permissions
+#User=node_exporter
+ExecStart=/opt/cloudmon/cloudmon
+WorkingDirectory=/opt/cloudmon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

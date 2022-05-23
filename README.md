@@ -21,4 +21,4 @@
 TBD
 
 # Documentation
-You can find the official documentation at [https://dreitier.github.io/cloudmon-docs](https://cloudmon.github.io](https://dreitier.github.io/cloudmon-docs).
+You can find the official documentation at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).

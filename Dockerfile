@@ -1,13 +1,21 @@
-FROM fedora:30
-WORKDIR /usr/local/bin
+# syntax=docker/dockerfile:1
 
-# copy binaries from our local work directory
-COPY cloudmon .
-# interpolator has been build by Dockerfile.build
-# @see https://github.com/dreitier/interpolator
-COPY interpolator .
-COPY entrypoint.sh .
+# builder image
+FROM golang:1.16 AS builder
+WORKDIR /build
+COPY . ./
+RUN make
+
+# interpolator dependency
+FROM dreitier/interpolator:1.0.0 AS interpolator
+
+# target image
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /build/cloudmon .
+COPY --from=interpolator /app/interpolator .
+COPY entrypoint.sh /app
 
 EXPOSE 8000/tcp
-
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]

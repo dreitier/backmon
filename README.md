@@ -1,10 +1,18 @@
 # cloudmon - Monitoring of backups in S3 buckets
 *cloudmon* monitors backup file inside an S3 or Minio bucket.
 
-# Dependencies
+## Description
+
+With *cloudmon* you can monitor and check recurring backup files, stored in an S3-compatible bucket. *cloudmon* exports the backup status of the files in a Prometheus-compatible format.
+
+## Getting started
+### Documentation
+The official documentation is located at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
+
+### Dependencies
 *cloudmon* requires Go 1.11 or later to make use of Go modules (@see https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51)
 
-# Local installation
+### Local installation
 
 	$ mkdir -p ~/go/{src,bin}
 	$ echo "export GOPATH=\"\$HOME/go\"" >> ~/.bashrc
@@ -17,8 +25,24 @@
 	$ sudo apt install golang-go
 	$ sudo go build
 
-# License
-TBD
+### Docker container
+You can find ready-to-run Docker containers at [dreitier/cloudmon](https://hub.docker.com/repository/docker/dreitier/cloudmon).
 
-# Documentation
-You can find the official documentation at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
+## Development
+### Creating new release
+A new release (artifact & Docker container) is automatically created when a new Git tag is pushed:
+
+```bash
+git tag x.y.z
+git push origin x.y.z
+```
+
+## Support
+This software is provided as-is. You can open an issue in GitHub's issue tracker at any time. But we can't promise to get it fixed in the near future.
+If you need professionally support, consulting or a dedicated feature, please get in contact with us through our [website](https://dreitier.com).
+
+## Contribution
+Feel free to provide a pull request.
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details

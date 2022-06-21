@@ -10,7 +10,7 @@ With *cloudmon* you can monitor and check recurring backup files, stored in an S
 The official documentation is located at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
 
 ### Dependencies
-*cloudmon* requires Go 1.11 or later to make use of Go modules (@see https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51)
+*cloudmon* requires Go 1.11 or later to make use of Go modules, see [https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51](https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51).
 
 ### Local installation
 
@@ -29,7 +29,7 @@ The official documentation is located at [https://dreitier.github.io/cloudmon-do
 You can find ready-to-run Docker containers at [dreitier/cloudmon](https://hub.docker.com/repository/docker/dreitier/cloudmon).
 
 ## Development
-### Creating new release
+### Creating new releases
 A new release (artifact & Docker container) is automatically created when a new Git tag is pushed:
 
 ```bash
@@ -45,4 +45,4 @@ If you need professionally support, consulting or a dedicated feature, please ge
 Feel free to provide a pull request.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE.md file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

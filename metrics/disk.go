@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Bucket struct {
+type Disk struct {
 	status              prometheus.Gauge
 	fileCountExpected   *prometheus.GaugeVec
 	fileCount           *prometheus.GaugeVec
@@ -16,14 +16,14 @@ type Bucket struct {
 	latestSize          *prometheus.GaugeVec
 }
 
-func NewBucket(bucketName string) *Bucket {
-	presetLabels := map[string]string{"bucket": bucketName}
-	bucket := &Bucket{
+func NewDisk(diskName string) *Disk {
+	presetLabels := map[string]string{"disk": diskName}
+	disk := &Disk{
 		status: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "status",
-			Help:      "Indicates whether there were any problems collecting metrics for this bucket. Any value >0 means that errors occurred.",
+			Help:      "Indicates whether there were any problems collecting metrics for this disk. Any value >0 means that errors occurred.",
 			ConstLabels: presetLabels,
 		}),
 		fileCountExpected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -101,18 +101,18 @@ func NewBucket(bucketName string) *Bucket {
 			"group",
 		}),
 	}
-	registry.MustRegister(bucket.status)
-	registry.MustRegister(bucket.fileCountExpected)
-	registry.MustRegister(bucket.fileCount)
-	registry.MustRegister(bucket.fileAgeThreshold)
-	registry.MustRegister(bucket.fileYoungCount)
-	registry.MustRegister(bucket.latestCtimeExpected)
-	registry.MustRegister(bucket.latestCtime)
-	registry.MustRegister(bucket.latestSize)
-	return bucket
+	registry.MustRegister(disk.status)
+	registry.MustRegister(disk.fileCountExpected)
+	registry.MustRegister(disk.fileCount)
+	registry.MustRegister(disk.fileAgeThreshold)
+	registry.MustRegister(disk.fileYoungCount)
+	registry.MustRegister(disk.latestCtimeExpected)
+	registry.MustRegister(disk.latestCtime)
+	registry.MustRegister(disk.latestSize)
+	return disk
 }
 
-func (b *Bucket) Drop() {
+func (b *Disk) Drop() {
 	registry.Unregister(b.status)
 	registry.Unregister(b.fileCountExpected)
 	registry.Unregister(b.fileCount)
@@ -123,7 +123,7 @@ func (b *Bucket) Drop() {
 	registry.Unregister(b.latestSize)
 }
 
-func (b *Bucket) DefinitionsMissing() {
+func (b *Disk) DefinitionsMissing() {
 	b.status.Set(1)
 	b.fileCountExpected.Reset()
 	b.fileCount.Reset()
@@ -134,7 +134,7 @@ func (b *Bucket) DefinitionsMissing() {
 	b.latestSize.Reset()
 }
 
-func (b *Bucket) DefinitionsUpdated() {
+func (b *Disk) DefinitionsUpdated() {
 	b.status.Set(0)
 	b.fileCountExpected.Reset()
 	b.fileCount.Reset()
@@ -145,13 +145,13 @@ func (b *Bucket) DefinitionsUpdated() {
 	b.latestSize.Reset()
 }
 
-func (b *Bucket) FileLimits(dir string, file string, count uint64, age time.Duration, ctime time.Time) {
+func (b *Disk) FileLimits(dir string, file string, count uint64, age time.Duration, ctime time.Time) {
 	b.fileCountExpected.WithLabelValues(dir, file).Set(float64(count))
 	b.fileAgeThreshold.WithLabelValues(dir, file).Set(age.Seconds())
 	b.latestCtimeExpected.WithLabelValues(dir, file).Set(float64(ctime.Unix()))
 }
 
-func (b *Bucket) FileCounts(dir string, file string, group string, present int, young uint64) {
+func (b *Disk) FileCounts(dir string, file string, group string, present int, young uint64) {
 	b.fileCount.WithLabelValues(dir, file, group).Set(float64(present))
 	b.fileYoungCount.WithLabelValues(dir, file, group).Set(float64(young))
 	if present == 0 {
@@ -164,12 +164,12 @@ func (b *Bucket) FileCounts(dir string, file string, group string, present int, 
 	}
 }
 
-func (b *Bucket) LatestFile(dir string, file string, group string, size int64, time time.Time) {
+func (b *Disk) LatestFile(dir string, file string, group string, size int64, time time.Time) {
 	b.latestCtime.WithLabelValues(dir, file, group).Set(float64(time.Unix()))
 	b.latestSize.WithLabelValues(dir, file, group).Set(float64(size))
 }
 
-func (b *Bucket) DropFile(dir string, file string, group string) {
+func (b *Disk) DropFile(dir string, file string, group string) {
 	labels := make(map[string]string)
 	labels["dir"] = dir
 	labels["file"] = file

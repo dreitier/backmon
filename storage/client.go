@@ -6,10 +6,10 @@ import (
 )
 
 type Client interface {
-	GetBucketNames() ([]string, error)
-	GetFileNames(bucket string, maxDepth uint) (*DirectoryInfo, error)
-	Download(bucket string, file *FileInfo) (bytes io.ReadCloser, err error)
-	Delete(bucket string, file *FileInfo) error
+	GetDiskNames() ([]string, error)
+	GetFileNames(disk string, maxDepth uint) (*DirectoryInfo, error)
+	Download(disk string, file *FileInfo) (bytes io.ReadCloser, err error)
+	Delete(disk string, file *FileInfo) error
 }
 
 func NewClient(config *config.Client) Client {

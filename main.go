@@ -15,18 +15,18 @@ func main() {
 		log.SetLevel(logLevel)
 	}
 
-	scheduleBucketUpdates()
+	scheduleDiskUpdates()
 	web.StartServer()
 }
 
-func scheduleBucketUpdates() {
+func scheduleDiskUpdates() {
 	updateInterval := config.GetInstance().Global().UpdateInterval()
 
 	ticker := time.NewTicker(updateInterval)
 	go func() {
-		storage.UpdateBucketInfo()
+		storage.UpdateDiskInfo()
 		for range ticker.C {
-			storage.UpdateBucketInfo()
+			storage.UpdateDiskInfo()
 		}
 	}()
 }

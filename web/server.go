@@ -16,7 +16,7 @@ func StartServer() {
 	
 
 	r := mux.NewRouter()
-	//r.HandleFunc("/{bucket}", handler)
+	//r.HandleFunc("/{disk}", handler)
 
 	r.PathPrefix("/").Handler(Router)
 

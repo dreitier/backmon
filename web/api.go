@@ -8,30 +8,30 @@ import (
 	"net/http"
 )
 
-func GetBuckets(w http.ResponseWriter) {
-	buckets := storage.GetBuckets()
+func GetDisks(w http.ResponseWriter) {
+	disks := storage.GetDisks()
 
-	writeData(w, buckets)
+	writeData(w, disks)
 }
 
 func GetDirectories(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 ) {
-	bucket := findBucket(w, bucketName)
-	if bucket == nil {
+	disk := findDisk(w, diskName)
+	if disk == nil {
 		return
 	}
 
-	writeData(w, bucket.Definition)
+	writeData(w, disk.Definition)
 }
 
 func GetFiles(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 	directoryName string,
 ) {
-	dir := findDirectory(w, bucketName, directoryName)
+	dir := findDirectory(w, diskName, directoryName)
 	if dir == nil {
 		return
 	}
@@ -41,11 +41,11 @@ func GetFiles(
 
 func GetVariations(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 ) {
-	filenames := storage.GetFilenames(bucketName, directoryName, fileName)
+	filenames := storage.GetFilenames(diskName, directoryName, fileName)
 	if filenames == nil {
 		fileNotFound(w, fileName)
 		return
@@ -56,12 +56,12 @@ func GetVariations(
 
 func Download(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 	variation string,
 ) {
-	data, err := storage.Download(bucketName, directoryName, fileName, variation)
+	data, err := storage.Download(diskName, directoryName, fileName, variation)
 	if err != nil {
 		groupNotFound(w, variation)
 		w.WriteHeader(http.StatusNotFound)
@@ -94,27 +94,27 @@ func writeData(w http.ResponseWriter, data interface{}) {
 	}
 }
 
-func findBucket(
+func findDisk(
 	w http.ResponseWriter,
-	bucketName string,
-) *storage.BucketData {
-	bucket := storage.FindBucket(bucketName)
-	if bucket == nil {
-		bucketNotFound(w, bucketName)
+	diskName string,
+) *storage.DiskData {
+	disk := storage.FindDisk(diskName)
+	if disk == nil {
+		diskNotFound(w, diskName)
 	}
-	return bucket
+	return disk
 }
 
 func findDirectory(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 	directoryName string,
 ) *backup.Directory {
-	bucket := findBucket(w, bucketName)
-	if bucket == nil {
+	disk := findDisk(w, diskName)
+	if disk == nil {
 		return nil
 	}
-	for _, dir := range bucket.Definition {
+	for _, dir := range disk.Definition {
 		if dir.Alias == directoryName {
 			return dir
 		}
@@ -125,11 +125,11 @@ func findDirectory(
 
 func findFile(
 	w http.ResponseWriter,
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 ) *backup.File {
-	dir := findDirectory(w, bucketName, directoryName)
+	dir := findDirectory(w, diskName, directoryName)
 	if dir == nil {
 		return nil
 	}

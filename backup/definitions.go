@@ -251,7 +251,7 @@ func ParseDirectoryPattern(pattern string) (*regexp.Regexp, error) {
 func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string]uint) {
 	normalized := strings.Trim(pattern, `/`)
 	if len(normalized) == 0 || normalized == "." {
-		// The pattern refers to the bucket root
+		// The pattern refers to the disk root
 		normalized = "."
 		filter = DirectoryFilter{
 			Pattern:   normalized,

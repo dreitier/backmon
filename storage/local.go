@@ -16,12 +16,12 @@ type LocalClient struct {
 	EnvName   string
 }
 
-func (c *LocalClient) GetFileNames(bucketName string, maxDepth uint) (*DirectoryInfo, error) {
-	if bucketName != c.Directory {
-		return nil, errors.New(fmt.Sprintf("bucket %#q does not exist", bucketName))
+func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*DirectoryInfo, error) {
+	if diskName != c.Directory {
+		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", diskName))
 	}
 
-	return scanDir(bucketName, "", "", maxDepth)
+	return scanDir(diskName, "", "", maxDepth)
 }
 
 func scanDir(root string, path string, dir string, maxDepth uint) (*DirectoryInfo, error) {
@@ -59,19 +59,19 @@ func scanDir(root string, path string, dir string, maxDepth uint) (*DirectoryInf
 	return info, nil
 }
 
-func (c *LocalClient) GetBucketNames() ([]string, error) {
-	bucketName := c.Directory
-	bucketNames := make([]string, 1, 1)
-	bucketNames[0] = bucketName
+func (c *LocalClient) GetDiskNames() ([]string, error) {
+	diskName := c.Directory
+	diskNames := make([]string, 1, 1)
+	diskNames[0] = diskName
 
-	return bucketNames, nil
+	return diskNames, nil
 }
 
-func (c *LocalClient) Download(bucket string, file *FileInfo) (bytes io.ReadCloser, err error) {
-	if bucket != c.Directory {
-		return nil, errors.New(fmt.Sprintf("bucket %#q does not exist", bucket))
+func (c *LocalClient) Download(disk string, file *FileInfo) (bytes io.ReadCloser, err error) {
+	if disk != c.Directory {
+		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", disk))
 	}
-	fileName := filepath.Join(bucket, file.Path, file.Name)
+	fileName := filepath.Join(disk, file.Path, file.Name)
 
 	bytes, err = os.Open(fileName)
 	if err != nil {
@@ -81,44 +81,44 @@ func (c *LocalClient) Download(bucket string, file *FileInfo) (bytes io.ReadClos
 	return bytes, nil
 }
 
-func (c *LocalClient) Delete(bucket string, file *FileInfo) error {
-	if bucket != c.Directory {
-		return fmt.Errorf("bucket %#q does not exist", bucket)
+func (c *LocalClient) Delete(disk string, file *FileInfo) error {
+	if disk != c.Directory {
+		return fmt.Errorf("disk %#q does not exist", disk)
 	}
-	filePath := filepath.Join(bucket, file.Path, file.Name)
+	filePath := filepath.Join(disk, file.Path, file.Name)
 
 	err := os.Remove(filePath)
 	return err
 }
 
-func (c *LocalClient) findBucket(bucketName *string) (*string, error) {
-	names, err := c.GetBucketNames()
+func (c *LocalClient) findDisk(diskName *string) (*string, error) {
+	names, err := c.GetDiskNames()
 
 	if err != nil {
-		return nil, fmt.Errorf("could not get available bucketName names: %s", err)
+		return nil, fmt.Errorf("could not get available diskName names: %s", err)
 	}
 
-	if runtime.GOOS != "windows" && !strings.HasPrefix(*bucketName, string(os.PathSeparator)) {
-		*bucketName = string(os.PathSeparator) + *bucketName
+	if runtime.GOOS != "windows" && !strings.HasPrefix(*diskName, string(os.PathSeparator)) {
+		*diskName = string(os.PathSeparator) + *diskName
 	}
 
-	bucketFound := false
+	diskFound := false
 
 	for _, name := range names {
-		if name == *bucketName {
-			bucketFound = true
+		if name == *diskName {
+			diskFound = true
 		}
 	}
 
-	if !bucketFound {
-		return nil, fmt.Errorf("unknown bucketName %#q", *bucketName)
+	if !diskFound {
+		return nil, fmt.Errorf("unknown diskName %#q", *diskName)
 	}
 
-	return bucketName, nil
+	return diskName, nil
 }
 
-func (c *LocalClient) getBucketName() string {
+func (c *LocalClient) getDiskName() string {
 	trimmedString := strings.TrimLeft(c.Directory, "/")
-	normalizedBucketName := strings.Replace(trimmedString, "/", "_", -1)
-	return normalizedBucketName
+	normalizedDiskName := strings.Replace(trimmedString, "/", "_", -1)
+	return normalizedDiskName
 }

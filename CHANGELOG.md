@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- Replaced `bucket` with `disk` to make a clear distinction between S3 *buckets* and *cloudmon* *disks*
 - Files at root level now get detected properly
 - Valid aliases no longer get reported as invalid
 

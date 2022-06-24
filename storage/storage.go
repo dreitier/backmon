@@ -30,7 +30,7 @@ func init() {
 			DefinitionFilename: env.Definitions,
 			Definition:         &FileInfo{Name:env.Definitions},
 			Client:             NewClient(env.Client),
-			Buckets:            make(map[string]*BucketData),
+			Disks:              make(map[string]*DiskData),
 		}
 	}
 }
@@ -39,119 +39,119 @@ type clientData struct {
 	DefinitionFilename string
 	Definition         *FileInfo
 	Client             Client
-	Buckets            map[string]*BucketData
+	Disks            map[string]*DiskData
 }
 
-func (client *clientData) updateBucketInfo() error {
-	bucketNames, err := client.Client.GetBucketNames()
+func (client *clientData) updateDiskInfo() error {
+	diskNames, err := client.Client.GetDiskNames()
 	if err != nil {
-		client.dropAllBuckets()
+		client.dropAllDisks()
 		return err
 	}
 
-	// find all buckets that were removed on the client
+	// find all disks that were removed on the client
 	var removed []string
-	for oldBucket := range client.Buckets {
+	for oldDisk := range client.Disks {
 		exists := false
-		for _, newBucket := range bucketNames {
-			if newBucket == oldBucket {
+		for _, newDisk := range diskNames {
+			if newDisk == oldDisk {
 				exists = true
 				break
 			}
 		}
 		if !exists {
-			removed = append(removed, oldBucket)
+			removed = append(removed, oldDisk)
 		}
 	}
-	// delete the removed buckets from the map
-	for _, removeBucket := range removed {
-		client.Buckets[removeBucket].metrics.Drop()
-		delete(client.Buckets, removeBucket)
+	// delete the removed disks from the map
+	for _, removeDisk := range removed {
+		client.Disks[removeDisk].metrics.Drop()
+		delete(client.Disks, removeDisk)
 	}
 
-	// add buckets that are new on the client to the map
-	for _, bucketName := range bucketNames {
-		if config.GetInstance().Global().IgnoreBucket(bucketName) {
+	// add disks that are new on the client to the map
+	for _, diskName := range diskNames {
+		if config.GetInstance().Global().IgnoreDisk(diskName) {
 			continue
 		}
-		_, exists := client.Buckets[bucketName]
+		_, exists := client.Disks[diskName]
 
-		// ignore buckets containing a file called '.cloudmonignore'
-		buf, err := client.Client.Download(bucketName, ignoreFile)
+		// ignore disks containing a file called '.cloudmonignore'
+		buf, err := client.Client.Download(diskName, ignoreFile)
 		if err == nil {
 			// .cloudmonignore found
 			_ = buf.Close()
 			if exists {
-				client.Buckets[bucketName].metrics.Drop()
-				delete(client.Buckets, bucketName)
+				client.Disks[diskName].metrics.Drop()
+				delete(client.Disks, diskName)
 			}
-			log.Debugf("Found file '%s' in bucket %s, ignoring bucket.", ignoreFile.Name, bucketName)
+			log.Infof("Found file '%s' in disk %s, ignoring disk.", ignoreFile.Name, diskName)
 			continue
 		}
 
 		if !exists {
-			safeAlias, _ := backup.MakeLegalAlias(bucketName)
+			safeAlias, _ := backup.MakeLegalAlias(diskName)
 			// no warning for now to avoid spamming the logs on every refresh
 			// if warn {
-			//	log.Warnf("The bucket '%s' contained non-url characters, its name will be '%s' in urls", bucketName, safeAlias)
+			//	log.Warnf("The disk '%s' contained non-url characters, its name will be '%s' in urls", diskName, safeAlias)
 			// }
 
-			client.Buckets[bucketName] = &BucketData{
-				Name:     bucketName,
+			client.Disks[diskName] = &DiskData{
+				Name:     diskName,
 				SafeName: safeAlias,
-				metrics:  metrics.NewBucket(bucketName),
+				metrics:  metrics.NewDisk(diskName),
 			}
 		}
 	}
 	return nil
 }
 
-func (client *clientData) dropAllBuckets() {
-	for _, bucket := range client.Buckets {
-		bucket.metrics.Drop()
+func (client *clientData) dropAllDisks() {
+	for _, disk := range client.Disks {
+		disk.metrics.Drop()
 	}
-	client.Buckets = make(map[string]*BucketData)
+	client.Disks = make(map[string]*DiskData)
 }
 
-type BucketData struct {
+type DiskData struct {
 	Name            string
 	SafeName        string
-	metrics         *metrics.Bucket
+	metrics         *metrics.Disk
 	groups          []map[string][]*FileInfo
 	Definition      backup.Definition
 	definitionsHash [sha1.Size]byte
 }
 
-func (bucket *BucketData)  MarshalJSON() ([]byte, error) {
-	return json.Marshal(bucket.Name)
+func (disk *DiskData)  MarshalJSON() ([]byte, error) {
+	return json.Marshal(disk.Name)
 }
 
-func (bucket *BucketData) updateDefinitions(data io.Reader) {
+func (disk *DiskData) updateDefinitions(data io.Reader) {
 	var buf bytes.Buffer
 	duplicate := io.TeeReader(data, &buf)
-	changed, err := bucket.hashChanged(duplicate)
+	changed, err := disk.hashChanged(duplicate)
 	if err != nil {
-		log.Errorf("Failed to update backup definitions in '%s': %s", bucket.Name, err)
-		bucket.Definition = nil
-		bucket.metrics.DefinitionsMissing()
+		log.Errorf("Failed to update backup definitions in '%s': %s", disk.Name, err)
+		disk.Definition = nil
+		disk.metrics.DefinitionsMissing()
 		return
 	}
 	if !changed {
-		log.Debugf("Backup definitions in '%s' are unchanged.", bucket.Name)
+		log.Debugf("Backup definitions in '%s' are unchanged.", disk.Name)
 		return
 	}
-	log.Infof("Backup definitions in '%s' changed, parsing new definitions.", bucket.Name)
-	bucket.Definition, err = backup.ParseDefinition(&buf)
+	log.Infof("Backup definitions in '%s' changed, parsing new definitions.", disk.Name)
+	disk.Definition, err = backup.ParseDefinition(&buf)
 	if err != nil {
-		log.Errorf("Failed to parse backup definitions in '%s': ", bucket.Name, err)
-		bucket.metrics.DefinitionsMissing()
+		log.Errorf("Failed to parse backup definitions in '%s': ", disk.Name, err)
+		disk.metrics.DefinitionsMissing()
 		return
 	}
-	bucket.metrics.DefinitionsUpdated()
-	bucket.groups = make([]map[string][]*FileInfo, len(bucket.Definition))
+	disk.metrics.DefinitionsUpdated()
+	disk.groups = make([]map[string][]*FileInfo, len(disk.Definition))
 }
 
-func (bucket *BucketData) hashChanged(data io.Reader) (changed bool, err error) {
+func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
 	sha := sha1.New()
 	count, err := io.Copy(sha, data)
 	if err != nil {
@@ -161,22 +161,22 @@ func (bucket *BucketData) hashChanged(data io.Reader) (changed bool, err error) 
 	hash := make([]byte, 0, sha1.Size)
 	hash = sha.Sum(hash)
 	for i := 0; i < sha1.Size; i++ {
-		if bucket.definitionsHash[i] != hash[i] {
+		if disk.definitionsHash[i] != hash[i] {
 			changed = true
 			break
 		}
 	}
 	if changed {
 		for i := 0; i < sha1.Size; i++ {
-			bucket.definitionsHash[i] = hash[i]
+			disk.definitionsHash[i] = hash[i]
 		}
 	}
 	return changed, nil
 }
 
-func (bucket *BucketData) maxDepth() uint {
+func (disk *DiskData) maxDepth() uint {
 	maxDepth := uint(0)
-	for _, dir := range bucket.Definition {
+	for _, dir := range disk.Definition {
 		depth := uint(len(dir.Filter.Layers))
 		if depth > maxDepth {
 			maxDepth = depth
@@ -210,7 +210,7 @@ func (list FileGroup) Swap(i int, j int) {
 	list[i], list[j] = list[j], list[i]
 }
 
-func (list FileGroup) Purge(fileDef *backup.File, path string, bucket string, client Client) (remainder FileGroup, young uint64) {
+func (list FileGroup) Purge(fileDef *backup.File, path string, disk string, client Client) (remainder FileGroup, young uint64) {
 	threshold := time.Now().UTC().Add(-fileDef.RetentionAge)
 	young = uint64(sort.Search(len(list), func(i int) bool { return list[i].Time.Before(threshold) }))
 
@@ -224,9 +224,9 @@ func (list FileGroup) Purge(fileDef *backup.File, path string, bucket string, cl
 	}
 
 	excess := list[keep:]
-	log.Infof("Purging %d excess files matching %#q in %#q from bucket %#q", len(excess), fileDef.Pattern, path, bucket)
+	log.Infof("Purging %d excess files matching %#q in %#q from disk %#q", len(excess), fileDef.Pattern, path, disk)
 	for _, file := range excess {
-		err := client.Delete(bucket, file.File)
+		err := client.Delete(disk, file.File)
 		if err != nil {
 			list[keep] = file
 			keep++
@@ -238,45 +238,45 @@ func (list FileGroup) Purge(fileDef *backup.File, path string, bucket string, cl
 	return list[:keep], young
 }
 
-func UpdateBucketInfo() {
-	log.Info("Updating bucket info...")
+func UpdateDiskInfo() {
+	log.Info("Updating disk info...")
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	for clientName, client := range clients {
 		log.Debugf("[Client] %s -> %s", clientName, client.DefinitionFilename)
-		if err := client.updateBucketInfo(); err != nil {
-			log.Errorf("Could not retrieve bucket names from client %s: %v", clientName, err)
+		if err := client.updateDiskInfo(); err != nil {
+			log.Errorf("Could not retrieve disk names from client %s: %v", clientName, err)
 			continue
 		}
 
-		for bucketName, bucket := range client.Buckets {
-			log.Debugf("[Bucket] %s :", bucketName)
-			buf, err := client.Client.Download(bucketName, client.Definition)
+		for diskName, disk := range client.Disks {
+			log.Debugf("[Disk] %s :", diskName)
+			buf, err := client.Client.Download(diskName, client.Definition)
 			if err != nil {
-				log.Errorf("Backup definitions file '%s' in bucket %s could not be opened: %v", client.DefinitionFilename, bucketName, err)
-				bucket.metrics.DefinitionsMissing()
+				log.Errorf("Backup definitions file '%s' in disk %s could not be opened: %v", client.DefinitionFilename, diskName, err)
+				disk.metrics.DefinitionsMissing()
 				continue
 			}
-			bucket.updateDefinitions(buf)
+			disk.updateDefinitions(buf)
 			_ = buf.Close()
 
-			files, err := client.Client.GetFileNames(bucketName, bucket.maxDepth())
+			files, err := client.Client.GetFileNames(diskName, disk.maxDepth())
 			if err != nil {
-				log.Errorf("Failed to retrieve files from bucket %s: %v", bucketName, err)
+				log.Errorf("Failed to retrieve files from disk %s: %v", diskName, err)
 				//Don't just return, we still need to update the metrics!
-				files = &DirectoryInfo{Name: bucketName}
+				files = &DirectoryInfo{Name: diskName}
 			}
 
-			updateMetrics(client.Client, bucket, files)
+			updateMetrics(client.Client, disk, files)
 		}
 	}
-	log.Debug("...Bucket info updated")
+	log.Debug("...Disk info updated")
 }
 
-func updateMetrics(client Client, bucket *BucketData, root *DirectoryInfo) {
+func updateMetrics(client Client, disk *DiskData, root *DirectoryInfo) {
 	now := time.Now()
-	for iDir, dirDef := range bucket.Definition {
+	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))
 		fileGroups := make(FileLookup, len(dirDef.Files))
@@ -284,7 +284,7 @@ func updateMetrics(client Client, bucket *BucketData, root *DirectoryInfo) {
 
 		for _, fileDef := range dirDef.Files {
 			lastRun := backup.FindPrevious(fileDef.Schedule, now)
-			bucket.metrics.FileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
+			disk.metrics.FileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
 		}
 
 		currentGroups := make(map[string][]*FileInfo, len(fileGroups))
@@ -293,25 +293,25 @@ func updateMetrics(client Client, bucket *BucketData, root *DirectoryInfo) {
 			for k, fileDef := range dirDef.Files {
 				matches := fileMatches[k]
 				sort.Sort(matches)
-				matches, young := matches.Purge(fileDef, group, bucket.Name, client)
+				matches, young := matches.Purge(fileDef, group, disk.Name, client)
 
-				bucket.metrics.FileCounts(dirDef.Alias, fileDef.Alias, group, len(matches), young)
+				disk.metrics.FileCounts(dirDef.Alias, fileDef.Alias, group, len(matches), young)
 				if len(matches) > 0 {
 					latest[k] = matches[0].File
-					bucket.metrics.LatestFile(dirDef.Alias, fileDef.Alias, group, matches[0].File.Size, matches[0].Time)
+					disk.metrics.LatestFile(dirDef.Alias, fileDef.Alias, group, matches[0].File.Size, matches[0].Time)
 				}
 			}
 			currentGroups[group] = latest
 		}
 
-		pastGroups := bucket.groups[iDir]
-		bucket.groups[iDir] = currentGroups
+		pastGroups := disk.groups[iDir]
+		disk.groups[iDir] = currentGroups
 		for group := range pastGroups {
 			if _, exists := fileGroups[group]; exists {
 				continue
 			}
 			for _, fileDef := range dirDef.Files {
-				bucket.metrics.DropFile(dirDef.Alias, fileDef.Alias, group)
+				disk.metrics.DropFile(dirDef.Alias, fileDef.Alias, group)
 			}
 		}
 	}
@@ -470,26 +470,26 @@ func collectMatchingFiles(
 	return matches
 }
 
-func GetBuckets() []*BucketData {
+func GetDisks() []*DiskData {
 	total := 0
 	for _, client := range clients {
-		total += len(client.Buckets)
+		total += len(client.Disks)
 	}
-	buckets := make([]*BucketData, 0, total)
+	disks := make([]*DiskData, 0, total)
 	for _, client := range clients {
-		for _, bucket := range client.Buckets {
-			buckets = append(buckets, bucket)
+		for _, disk := range client.Disks {
+			disks = append(disks, disk)
 		}
 	}
-	return buckets
+	return disks
 }
 
 func GetFilenames(
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 ) []string {
-	groups, file := findGroups(bucketName, directoryName, fileName)
+	groups, file := findGroups(diskName, directoryName, fileName)
 	if groups == nil {
 		return nil
 	}
@@ -503,74 +503,74 @@ func GetFilenames(
 }
 
 func Download(
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 	groupName string,
 ) (bytes io.ReadCloser, err error) {
-	groups, file := findGroups(bucketName, directoryName, fileName)
+	groups, file := findGroups(diskName, directoryName, fileName)
 	if groups == nil {
 		return nil, errors.New("the requested file does not exist")
 	}
 	var client *clientData
 	for _, client = range clients {
-		if _, found := client.Buckets[bucketName]; found {
+		if _, found := client.Disks[diskName]; found {
 			break
 		}
 	}
 	if client == nil {
 		return nil, errors.New("the requested file does not exist")
 	}
-	return client.Client.Download(bucketName, groups[groupName][file])
+	return client.Client.Download(diskName, groups[groupName][file])
 }
 
 func findGroups(
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 ) (map[string][]*FileInfo, int) {
-	bucket := FindBucket(bucketName)
-	if bucket == nil {
+	disk := FindDisk(diskName)
+	if disk == nil {
 		return nil, 0
 	}
 
 	var dirI int
-	for dirI = 0; dirI < len(bucket.Definition); dirI++ {
-		if bucket.Definition[dirI].Alias == directoryName {
+	for dirI = 0; dirI < len(disk.Definition); dirI++ {
+		if disk.Definition[dirI].Alias == directoryName {
 			break
 		}
 	}
-	if dirI >= len(bucket.Definition) {
+	if dirI >= len(disk.Definition) {
 		return nil, 0
 	}
-	dir := bucket.Definition[dirI]
+	dir := disk.Definition[dirI]
 	var fileI int
 	for fileI = 0; fileI < len(dir.Files); fileI++ {
 		if dir.Files[fileI].Alias == fileName {
-			return bucket.groups[dirI], fileI
+			return disk.groups[dirI], fileI
 		}
 	}
 	return nil, 0
 }
 
-func FindBucket(bucketName string) *BucketData {
+func FindDisk(diskName string) *DiskData {
 	for _, client := range clients {
-		if bucket, found := client.Buckets[bucketName]; found {
-			return bucket
+		if disk, found := client.Disks[diskName]; found {
+			return disk
 		}
 	}
 	return nil
 }
 
 func FindDirectory(
-	bucketName string,
+	diskName string,
 	directoryName string,
 ) *backup.Directory {
-	bucket := FindBucket(bucketName)
-	if bucket == nil {
+	disk := FindDisk(diskName)
+	if disk == nil {
 		return nil
 	}
-	for _, dir := range bucket.Definition {
+	for _, dir := range disk.Definition {
 		if dir.Alias == directoryName {
 			return dir
 		}
@@ -579,11 +579,11 @@ func FindDirectory(
 }
 
 func FindFile(
-	bucketName string,
+	diskName string,
 	directoryName string,
 	fileName string,
 ) *backup.File {
-	dir := FindDirectory(bucketName, directoryName)
+	dir := FindDirectory(diskName, directoryName)
 	if dir == nil {
 		return nil
 	}

@@ -129,10 +129,10 @@ func parseGlobal(cfg Raw) *global {
 	}
 
 	ignore := make(map[string]struct{})
-	if cfg.Has("ignore_buckets") {
-		for _, bucket := range cfg.StringSlice("ignore_buckets") {
-			log.Debugf("Ignoring bucket %s", bucket)
-			ignore[bucket] = struct{}{}
+	if cfg.Has("ignore_disks") {
+		for _, disk := range cfg.StringSlice("ignore_disks") {
+			log.Debugf("Ignoring disk %s", disk)
+			ignore[disk] = struct{}{}
 		}
 	}
 

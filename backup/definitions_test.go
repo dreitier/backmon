@@ -28,25 +28,25 @@ func Test_parseDefinitions(t *testing.T) {
 }
 
 func Test_parseDirectoryPattern(t *testing.T) {
-	const bucketNamePattern = "/backup.to/{{service}}/inst_{{instance}}"
-	const bucketNameMatch = "/backup.to/test#3/inst_a~1/"
-	const bucketNameFail = "myapp_z/erg_production-2019-06-24_02-45-00.sql"
+	const diskNamePattern = "/backup.to/{{service}}/inst_{{instance}}"
+	const diskNameMatch = "/backup.to/test#3/inst_a~1/"
+	const diskNameFail = "myapp_z/erg_production-2019-06-24_02-45-00.sql"
 
-	regex, err := ParseDirectoryPattern(bucketNamePattern)
+	regex, err := ParseDirectoryPattern(diskNamePattern)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !regex.MatchString(bucketNameMatch) {
-		t.Error("Regex did not match a correct patten:", bucketNameMatch)
+	if !regex.MatchString(diskNameMatch) {
+		t.Error("Regex did not match a correct patten:", diskNameMatch)
 	}
 
-	if regex.MatchString(bucketNameFail) {
-		t.Error("Regex matched an incorrect pattern:", bucketNameFail)
+	if regex.MatchString(diskNameFail) {
+		t.Error("Regex matched an incorrect pattern:", diskNameFail)
 	}
 
 	captures := make(map[string]string)
-	match := regex.FindStringSubmatch(bucketNameMatch)
+	match := regex.FindStringSubmatch(diskNameMatch)
 
 	for i, name := range regex.SubexpNames() {
 		// Ignore the whole regexp match and unnamed groups
@@ -67,25 +67,25 @@ func Test_parseDirectoryPattern(t *testing.T) {
 }
 
 func Test_parseDirectoryPatternWithNumber(t *testing.T) {
-	const bucketNamePattern = "saas/backup/{{instance}}"
-	const bucketNameMatch = "saas/backup/inst1"
-	const bucketNameFail = "saas/bla/inst_x"
+	const diskNamePattern = "saas/backup/{{instance}}"
+	const diskNameMatch = "saas/backup/inst1"
+	const diskNameFail = "saas/bla/inst_x"
 
-	regex, err := ParseDirectoryPattern(bucketNamePattern)
+	regex, err := ParseDirectoryPattern(diskNamePattern)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !regex.MatchString(bucketNameMatch) {
-		t.Error("Regex did not match a correct patten:", bucketNameMatch)
+	if !regex.MatchString(diskNameMatch) {
+		t.Error("Regex did not match a correct patten:", diskNameMatch)
 	}
 
-	if regex.MatchString(bucketNameFail) {
-		t.Error("Regex matched an incorrect pattern:", bucketNameFail)
+	if regex.MatchString(diskNameFail) {
+		t.Error("Regex matched an incorrect pattern:", diskNameFail)
 	}
 
 	captures := make(map[string]string)
-	match := regex.FindStringSubmatch(bucketNameMatch)
+	match := regex.FindStringSubmatch(diskNameMatch)
 
 	for i, name := range regex.SubexpNames() {
 		// Ignore the whole regexp match and unnamed groups

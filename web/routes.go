@@ -9,7 +9,7 @@ import (
 
 var Router *mux.Router
 
-const BucketInfoRoute = "bucket_info_route"
+const DiskInfoRoute = "disk_info_route"
 const LatestFileRoute = "latest_file_route"
 
 func init () {
@@ -19,10 +19,10 @@ func init () {
 	Router.Handle("/metrics", metrics.Handler())
 
 	Router.HandleFunc("/api", EnvHandler)
-	Router.HandleFunc("/api/{bucket}", BucketInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{bucket}/{dir}", DirectoryInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{bucket}/{dir}/{file}", FileInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{bucket}/{dir}/{file}/{variant}", LatestFileHandler).Methods("GET")
+	Router.HandleFunc("/api/{disk}", DiskInfoHandler).Methods("GET")
+	Router.HandleFunc("/api/{disk}/{dir}", DirectoryInfoHandler).Methods("GET")
+	Router.HandleFunc("/api/{disk}/{dir}/{file}", FileInfoHandler).Methods("GET")
+	Router.HandleFunc("/api/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods("GET")
 }
 
 // Base route to access the API Documentation.
@@ -31,48 +31,48 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func EnvHandler(w http.ResponseWriter, r *http.Request) {
-	GetBuckets(w)
-	//_, _ = w.Write([]byte(`<h1>Available Buckets:</h1>`))
-	//for _, bucket := range response {
+	GetDisks(w)
+	//_, _ = w.Write([]byte(`<h1>Available Disks:</h1>`))
+	//for _, disk := range response {
 	//	_, _ = w.Write([]byte(`<a href="/env/`))
-	//	_, _ = w.Write([]byte(bucket.SafeName))
+	//	_, _ = w.Write([]byte(disk.SafeName))
 	//	_, _ = w.Write([]byte(`/">`))
-	//	_, _ = w.Write([]byte(bucket.Name))
+	//	_, _ = w.Write([]byte(disk.Name))
 	//	_, _ = w.Write([]byte(`</a><br>`))
 	//}
 }
 
-func BucketInfoHandler(w http.ResponseWriter, r *http.Request) {
+func DiskInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unescape(vars)
-	bucketName := vars["bucket"]
+	diskName := vars["disk"]
 
-	GetDirectories(w, bucketName)
+	GetDirectories(w, diskName)
 }
 
 func DirectoryInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unescape(vars)
-	bucketName := vars["bucket"]
+	diskName := vars["disk"]
 	dirName := vars["dir"]
 
-	GetFiles(w, bucketName, dirName)
+	GetFiles(w, diskName, dirName)
 }
 
 func FileInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unescape(vars)
-	bucketName := vars["bucket"]
+	diskName := vars["disk"]
 	dirName := vars["dir"]
 	fileName := vars["file"]
 
-	GetVariations(w, bucketName, dirName, fileName)
+	GetVariations(w, diskName, dirName, fileName)
 }
 
-func bucketNotFound(w http.ResponseWriter, bucket string) {
+func diskNotFound(w http.ResponseWriter, disk string) {
 	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte(`Bucket '`))
-	_, _ = w.Write([]byte(bucket))
+	_, _ = w.Write([]byte(`Disk '`))
+	_, _ = w.Write([]byte(disk))
 	_, _ = w.Write([]byte(`' does not exist.`))
 }
 
@@ -100,12 +100,12 @@ func groupNotFound(w http.ResponseWriter, group string) {
 func LatestFileHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unescape(vars)
-	bucketName := vars["bucket"]
+	diskName := vars["disk"]
 	dirName := vars["dir"]
 	fileName := vars["file"]
 	variant := vars["variant"]
 
-	Download(w, bucketName, dirName, fileName, variant)
+	Download(w, diskName, dirName, fileName, variant)
 }
 
 func unescape(vars map[string]string) {

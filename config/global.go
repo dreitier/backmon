@@ -24,7 +24,7 @@ func (g *global) UpdateInterval() time.Duration {
 	return g.updateInterval
 }
 
-func (g *global) IgnoreBucket(bucket string) bool {
-	_, ignored := g.ignored[bucket]
+func (g *global) IgnoreDisk(disk string) bool {
+	_, ignored := g.ignored[disk]
 	return ignored
 }

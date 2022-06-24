@@ -3,6 +3,9 @@ EXECUTABLE=cloudmon
 
 all: build
 
+test:
+	go test -v ./...
+
 build:
 	go mod download
 	# disable CGO to use default libc

@@ -44,7 +44,7 @@ func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
 	parsed := make(RawDefinition)
 	for dirName := range cfg {
 		dirConfig := cfg.Sub(dirName)
-		dir, err := parseRawDirectory(dirConfig, dirName)
+		dir, err := parseDirectorySection(dirConfig, dirName)
 		if err != nil {
 			return nil, err
 		}
@@ -54,8 +54,10 @@ func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
 	return parsed, nil
 }
 
-func parseRawDirectory(cfg config.Raw, name string) (*RawDirectory, error) {
+func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {
 	defaults, err := parseDefaults(cfg.Sub("defaults"))
+	const paramAlias = "alias"
+
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +69,7 @@ func parseRawDirectory(cfg config.Raw, name string) (*RawDirectory, error) {
 	} else {
 		for fileName := range fileConfigs {
 			fileConfig := fileConfigs.Sub(fileName)
-			file, err := parseRawFile(fileConfig, defaults)
+			file, err := parseFileSection(fileConfig, defaults)
 			if err != nil {
 				return nil, err
 			}
@@ -75,15 +77,20 @@ func parseRawDirectory(cfg config.Raw, name string) (*RawDirectory, error) {
 		}
 	}
 
+	var alias = name
+	if cfg.Has(paramAlias) {
+		alias = cfg.String(paramAlias)
+	}
+
 	return &RawDirectory{
-		Alias:    cfg.String("alias"),
+		Alias:    alias,
 		FuseVars: cfg.StringSlice("fuse"),
 		Defaults: defaults,
 		Files:    files,
 	}, nil
 }
 
-func parseRawFile(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
+func parseFileSection(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
 	file := &RawFile{
 		Alias: cfg.String("alias"),
 	}

@@ -44,5 +44,9 @@ If you need professionally support, consulting or a dedicated feature, please ge
 ## Contribution
 Feel free to provide a pull request.
 
+## TOOD
+
+- `default.sort` and `files[].sort` has no effect at the moment
+
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

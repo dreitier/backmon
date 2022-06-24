@@ -244,39 +244,43 @@ func (list FileGroup) Purge(fileDef *backup.File, path string, disk string, clie
 }
 
 func UpdateDiskInfo() {
-	log.Info("Updating disk info...")
+	log.Info("Updating disks info...")
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for clientName, client := range clients {
-		log.Debugf("[Client] %s -> %s", clientName, client.DefinitionFilename)
+	for environmentName, client := range clients {
+		log.Debugf("[env:%s] Updating disks", environmentName)
+
 		if err := client.updateDiskInfo(); err != nil {
-			log.Errorf("Could not retrieve disk names from client %s: %v", clientName, err)
+			log.Errorf("[env:%s] Could not retrieve disk names from client: %v", environmentName, err)
 			continue
 		}
 
 		for diskName, disk := range client.Disks {
-			log.Debugf("[Disk] %s :", diskName)
+			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
+
 			buf, err := client.Client.Download(diskName, client.Definition)
 			if err != nil {
-				log.Errorf("Backup definitions file '%s' in disk %s could not be opened: %v", client.DefinitionFilename, diskName, err)
+				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, client.DefinitionFilename, err)
 				disk.metrics.DefinitionsMissing()
 				continue
 			}
+			
 			disk.updateDefinitions(buf)
 			_ = buf.Close()
 
 			files, err := client.Client.GetFileNames(diskName, disk.maxDepth())
 			if err != nil {
-				log.Errorf("Failed to retrieve files from disk %s: %v", diskName, err)
-				//Don't just return, we still need to update the metrics!
+				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
+				// don't just return, we still need to update the metrics!
 				files = &storage.DirectoryInfo{Name: diskName}
 			}
 
 			updateMetrics(client.Client, disk, files)
 		}
 	}
-	log.Debug("...Disk info updated")
+
+	log.Debug("... disks info updated")
 }
 
 func updateMetrics(client Client, disk *DiskData, root *storage.DirectoryInfo) {

@@ -25,37 +25,35 @@ type S3Client struct {
 }
 
 func getClient(c *S3Client) (*s3.S3, error) {
-
-	if c.s3Client == nil {
-
-		cfg := aws.Config{
-			Credentials: credentials.NewStaticCredentials(c.AccessKey, c.SecretKey, c.Token),
-		}
-
-		if c.ForcePathStyle {
-			cfg.S3ForcePathStyle = aws.Bool(true)
-		}
-
-		if len(c.Region) > 0 {
-			cfg.Region = aws.String(c.Region)
-		} else {
-			cfg.Region = aws.String("eu-central-1")
-		}
-
-		if len(c.Endpoint) > 0 {
-
-			cfg.Endpoint = aws.String(c.Endpoint)
-		}
-
-		sess, err := session.NewSession(&cfg)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to build S3 client: %s", err)
-		}
-
-		c.s3Client = s3.New(sess)
-
+	if c.s3Client != nil {
+		return c.s3Client, nil
 	}
+
+	cfg := aws.Config{
+		Credentials: credentials.NewStaticCredentials(c.AccessKey, c.SecretKey, c.Token),
+	}
+
+	if c.ForcePathStyle {
+		cfg.S3ForcePathStyle = aws.Bool(true)
+	}
+
+	if len(c.Region) > 0 {
+		cfg.Region = aws.String(c.Region)
+	} else {
+		cfg.Region = aws.String("eu-central-1")
+	}
+
+	if len(c.Endpoint) > 0 {
+		cfg.Endpoint = aws.String(c.Endpoint)
+	}
+
+	sess, err := session.NewSession(&cfg)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build S3 client: %s", err)
+	}
+
+	c.s3Client = s3.New(sess)
 
 	return c.s3Client, nil
 }
@@ -172,20 +170,32 @@ func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOu
 }
 
 func (c *S3Client) findAvailableDisks() ([]*s3.Bucket, error) {
+	var r []*s3.Bucket
 
 	svc, err := getClient(c)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
+		return nil, fmt.Errorf("Could not acquire S3 client instance: %s", err)
 	}
 
 	result, err := svc.ListBuckets(&s3.ListBucketsInput{})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to list S3 disks: %s", err)
+		return nil, fmt.Errorf("Failed to list S3 disks: %s", err)
 	}
 
-	return result.Buckets, nil
+	for _, bucket := range result.Buckets {
+		_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(*bucket.Name)})
+
+		if err != nil {
+			log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", bucket, err)
+			continue
+		}
+
+		r = append(r, bucket)
+	}
+
+	return r, nil
 }
 
 func (c *S3Client) GetDiskNames() ([]string, error) {

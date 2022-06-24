@@ -12,7 +12,7 @@ func StartServer() {
 	port := config.GetInstance().Global().HttpPort()
 	listenAddr := fmt.Sprintf(":%d", port)
 
-	log.Infof("Starting webserver on port %d", port)
+	log.Infof("Starting webserver on %s", listenAddr)
 	
 
 	r := mux.NewRouter()

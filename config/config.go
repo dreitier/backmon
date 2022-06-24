@@ -148,46 +148,64 @@ func parseEnvironments(cfg Raw) []*Environment {
 		env, err := parseEnvironment(envCfg, envName)
 
 		if err != nil {
-			log.Errorf("environment '%s' could not be parsed, skipping", err)
+			log.Errorf("Environment '%s' could not be parsed: %s", envName, err)
 			continue
 		}
 
 		envs = append(envs, env)
 	}
 
+	if len(envs) == 0 {
+		log.Fatalf("No valid environments defined in configuration file. Did you miss the `environments` section?")
+	}
+
 	return envs
 }
 
 func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
+	if envName == "" {
+		return nil, errors.New("Missing environment name")
+	}
 
 	if cfg == nil || envName == "" {
-		return nil, errors.New("failed to parse environment")
+		return nil, errors.New("Missing environment configuration entries")
 	}
 
 	var c *Client
+	const paramRegion = "region"
+	const paramForcePathStyle = "force_path_style"
+	const paramAccessKeyId = "access_key_id"
+	const paramSecretAccessKey = "secret_access_key"
+	const paramEndpoint = "endpoint"
+	const paramToken = "token"
 
 	// check if local env oder S3 env
 	if cfg.Has("path") {
 		path := cfg.String("path")
-
 		if path == "" {
-			return nil, errors.New("failed to parse environment, path or S3 credentials must be given")
+			return nil, errors.New("Parameter 'path' has been set, but is empty")
 		}
 
 		c = &Client{Directory: path, EnvName: envName}
 	} else {
 		region := "eu-central-1"
-		if cfg.Has("region") {
-			region = cfg.String("region")
+		if cfg.Has(paramRegion) {
+			region = cfg.String(paramRegion)
 		}
+
+		forcePathStyle := false
+		if (cfg.Has(paramForcePathStyle)) {
+			forcePathStyle = cfg.Bool(paramForcePathStyle)
+		}
+
 		c = &Client{
 			EnvName:        envName,
 			Region:         region,
-			AccessKey:      cfg.String("access_key_id"),
-			SecretKey:      cfg.String("secret_access_key"),
-			Endpoint:       cfg.String("endpoint"),
-			ForcePathStyle: cfg.Bool("force_path_style"),
-			Token:          cfg.String("token"),
+			ForcePathStyle: forcePathStyle,
+			AccessKey:      cfg.String(paramAccessKeyId),
+			SecretKey:      cfg.String(paramSecretAccessKey),
+			Endpoint:       cfg.String(paramEndpoint),
+			Token:          cfg.String(paramToken),
 		}
 	}
 

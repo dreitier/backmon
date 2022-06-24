@@ -239,7 +239,7 @@ func (list FileGroup) Purge(fileDef *backup.File, path string, bucket string, cl
 }
 
 func UpdateBucketInfo() {
-	log.Debug("Updating bucket info...")
+	log.Info("Updating bucket info...")
 	mutex.Lock()
 	defer mutex.Unlock()
 

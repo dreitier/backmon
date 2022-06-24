@@ -9,9 +9,11 @@ import (
 )
 
 func main() {
-	logLevel := config.GetInstance().Global().LogLevel()
+	if !config.HasGlobalDebugEnabled() {
+		logLevel := config.GetInstance().Global().LogLevel()
 
-	log.SetLevel(logLevel)
+		log.SetLevel(logLevel)
+	}
 
 	scheduleBucketUpdates()
 	web.StartServer()

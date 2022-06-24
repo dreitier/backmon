@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"flag"
 )
 
 type configuration struct {
@@ -18,7 +19,8 @@ type configuration struct {
 var (
 	instance *configuration
 	once     sync.Once
-	cfgPaths []string
+	configSearchDirectories []string
+	hasGlobalDebugEnabled bool
 )
 
 const (
@@ -29,17 +31,28 @@ const (
 )
 
 func init() {
+	flag.BoolVar(&hasGlobalDebugEnabled, "debug", false, "Enable debug log; overwrites any configuration file loglevel")
+	flag.Parse()
 
-	cfgPaths = append(cfgPaths, PathLocal)
+	if hasGlobalDebugEnabled {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug log level enabled")
+	}
+	
+	configSearchDirectories = append(configSearchDirectories, PathLocal)
 
 	userHome, err := os.UserHomeDir()
 
 	if  err == nil{
 		userHome = fmt.Sprintf("%s%c%s", userHome, os.PathSeparator, ".cloudmon")
-		cfgPaths = append(cfgPaths, userHome)
+		configSearchDirectories = append(configSearchDirectories, userHome)
 	}
 
-	cfgPaths = append(cfgPaths, PathGlobal)
+	configSearchDirectories = append(configSearchDirectories, PathGlobal)
+}
+
+func HasGlobalDebugEnabled() bool {
+	return hasGlobalDebugEnabled
 }
 
 func GetInstance() *configuration {
@@ -59,28 +72,30 @@ func (c *configuration) Environments() []*Environment {
 }
 
 func initConfig() {
-
 	var file *os.File = nil
 	var err error = nil
 
-	for _, path := range cfgPaths {
-		file, err = os.Open(filepath.Join(path, CfgFileName))
+	for _, directory := range configSearchDirectories {
+		var possibleConfigPath = filepath.Join(directory, CfgFileName)
+		log.Debugf("Checking for configuration file at %s", possibleConfigPath)
+
+		file, err = os.Open(possibleConfigPath)
 
 		if err == nil {
-			log.Infof("found config file at location %s", path)
+			log.Infof("Found configuration file at location %s", possibleConfigPath)
 			break
 		}
 	}
 
 	if file == nil {
-		log.Fatal("could not open config file")
+		log.Fatal("Could not find any configuration file")
 	}
 
 	defer file.Close()
 
 	cfg, err := Parse(file)
 	if err != nil {
-		log.Fatalf("failed to parse config file: %s", err)
+		log.Fatalf("Failed to parse configuration file: %s", err)
 	}
 
 	instance.global = parseGlobal(cfg)

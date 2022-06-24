@@ -2,19 +2,21 @@ package storage
 
 import (
 	"github.com/dreitier/cloudmon/config"
+	storage "github.com/dreitier/cloudmon/storage/abstraction"
+	provider "github.com/dreitier/cloudmon/storage/provider"
 	"io"
 )
 
 type Client interface {
 	GetDiskNames() ([]string, error)
-	GetFileNames(disk string, maxDepth uint) (*DirectoryInfo, error)
-	Download(disk string, file *FileInfo) (bytes io.ReadCloser, err error)
-	Delete(disk string, file *FileInfo) error
+	GetFileNames(disk string, maxDepth uint) (*storage.DirectoryInfo, error)
+	Download(disk string, file *storage.FileInfo) (bytes io.ReadCloser, err error)
+	Delete(disk string, file *storage.FileInfo) error
 }
 
 func NewClient(config *config.Client) Client {
 	if config.Directory == "" {
-		return &S3Client{
+		return &provider.S3Client{
 			EnvName:        config.EnvName,
 			Region:         config.Region,
 			AccessKey:      config.AccessKey,
@@ -24,7 +26,7 @@ func NewClient(config *config.Client) Client {
 			Token:          config.Token,
 		}
 	} else {
-		return &LocalClient{
+		return &provider.LocalClient{
 			EnvName:   config.EnvName,
 			Directory: config.Directory,
 		}

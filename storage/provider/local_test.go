@@ -1,8 +1,9 @@
-package storage
+package provider
 
 import (
 	"os"
 	"testing"
+	"github.com/dreitier/cloudmon/storage/abstraction"
 )
 
 func TestLocalClient_GetDiskNames(t *testing.T) {

@@ -1,4 +1,4 @@
-package storage
+package abstraction
 
 import (
 	"time"
@@ -15,4 +15,10 @@ type FileInfo struct {
 	Path      string
 	Size      int64
 	Timestamp time.Time
+}
+
+type File struct {
+	Name      *string
+	Timestamp *time.Time
+	Size      *int64
 }

@@ -32,12 +32,6 @@ const (
 
 func init() {
 	flag.BoolVar(&hasGlobalDebugEnabled, "debug", false, "Enable debug log; overwrites any configuration file loglevel")
-	flag.Parse()
-
-	if hasGlobalDebugEnabled {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug log level enabled")
-	}
 	
 	configSearchDirectories = append(configSearchDirectories, PathLocal)
 
@@ -74,6 +68,13 @@ func (c *configuration) Environments() []*Environment {
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
+	
+	flag.Parse()
+
+	if hasGlobalDebugEnabled {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug log level enabled")
+	}
 
 	for _, directory := range configSearchDirectories {
 		var possibleConfigPath = filepath.Join(directory, CfgFileName)

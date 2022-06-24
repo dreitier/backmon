@@ -5,6 +5,7 @@ import (
 	"github.com/dreitier/cloudmon/backup"
 	"github.com/dreitier/cloudmon/config"
 	"github.com/dreitier/cloudmon/metrics"
+	storage "github.com/dreitier/cloudmon/storage/abstraction"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -20,7 +21,7 @@ import (
 var (
 	clients = make(map[string]*clientData)
 	mutex   = &sync.Mutex{}
-	ignoreFile = &FileInfo{Name:".cloudmonignore"}
+	ignoreFile = &storage.FileInfo{Name:".cloudmonignore"}
 )
 
 func init() {
@@ -28,7 +29,7 @@ func init() {
 	for _, env := range envs {
 		clients[env.Name] = &clientData{
 			DefinitionFilename: env.Definitions,
-			Definition:         &FileInfo{Name:env.Definitions},
+			Definition:         &storage.FileInfo{Name:env.Definitions},
 			Client:             NewClient(env.Client),
 			Disks:              make(map[string]*DiskData),
 		}
@@ -37,7 +38,7 @@ func init() {
 
 type clientData struct {
 	DefinitionFilename string
-	Definition         *FileInfo
+	Definition         *storage.FileInfo
 	Client             Client
 	Disks            map[string]*DiskData
 }
@@ -117,7 +118,7 @@ type DiskData struct {
 	Name            string
 	SafeName        string
 	metrics         *metrics.Disk
-	groups          []map[string][]*FileInfo
+	groups          []map[string][]*storage.FileInfo
 	Definition      backup.Definition
 	definitionsHash [sha1.Size]byte
 }
@@ -128,6 +129,7 @@ func (disk *DiskData)  MarshalJSON() ([]byte, error) {
 
 func (disk *DiskData) updateDefinitions(data io.Reader) {
 	var buf bytes.Buffer
+	
 	duplicate := io.TeeReader(data, &buf)
 	changed, err := disk.hashChanged(duplicate)
 	if err != nil {
@@ -136,19 +138,22 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 		disk.metrics.DefinitionsMissing()
 		return
 	}
+	
 	if !changed {
 		log.Debugf("Backup definitions in '%s' are unchanged.", disk.Name)
 		return
 	}
+
 	log.Infof("Backup definitions in '%s' changed, parsing new definitions.", disk.Name)
 	disk.Definition, err = backup.ParseDefinition(&buf)
 	if err != nil {
-		log.Errorf("Failed to parse backup definitions in '%s': ", disk.Name, err)
+		log.Errorf("Failed to parse backup definitions in '%s': %s", disk.Name, err)
 		disk.metrics.DefinitionsMissing()
 		return
 	}
+	
 	disk.metrics.DefinitionsUpdated()
-	disk.groups = make([]map[string][]*FileInfo, len(disk.Definition))
+	disk.groups = make([]map[string][]*storage.FileInfo, len(disk.Definition))
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -188,7 +193,7 @@ func (disk *DiskData) maxDepth() uint {
 
 type TemporalFile struct {
 	Time time.Time
-	File *FileInfo
+	File *storage.FileInfo
 }
 
 type FileGroup []TemporalFile
@@ -265,7 +270,7 @@ func UpdateDiskInfo() {
 			if err != nil {
 				log.Errorf("Failed to retrieve files from disk %s: %v", diskName, err)
 				//Don't just return, we still need to update the metrics!
-				files = &DirectoryInfo{Name: diskName}
+				files = &storage.DirectoryInfo{Name: diskName}
 			}
 
 			updateMetrics(client.Client, disk, files)
@@ -274,7 +279,7 @@ func UpdateDiskInfo() {
 	log.Debug("...Disk info updated")
 }
 
-func updateMetrics(client Client, disk *DiskData, root *DirectoryInfo) {
+func updateMetrics(client Client, disk *DiskData, root *storage.DirectoryInfo) {
 	now := time.Now()
 	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
@@ -287,9 +292,9 @@ func updateMetrics(client Client, disk *DiskData, root *DirectoryInfo) {
 			disk.metrics.FileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
 		}
 
-		currentGroups := make(map[string][]*FileInfo, len(fileGroups))
+		currentGroups := make(map[string][]*storage.FileInfo, len(fileGroups))
 		for group, fileMatches := range fileGroups {
-			latest := make([]*FileInfo, len(dirDef.Files))
+			latest := make([]*storage.FileInfo, len(dirDef.Files))
 			for k, fileDef := range dirDef.Files {
 				matches := fileMatches[k]
 				sort.Sort(matches)
@@ -318,7 +323,7 @@ func updateMetrics(client Client, disk *DiskData, root *DirectoryInfo) {
 }
 
 func findMatchingDirs(
-	dir *DirectoryInfo,
+	dir *storage.DirectoryInfo,
 	dirDef *backup.Directory,
 	level uint,
 	offset uint,
@@ -371,7 +376,7 @@ func logDir(level uint, dir string) {
 }
 
 func findMatchingFiles(
-	dir *DirectoryInfo,
+	dir *storage.DirectoryInfo,
 	dirDef *backup.Directory,
 	vars []string,
 ) []FileGroup {
@@ -424,7 +429,7 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 }
 
 func collectMatchingFiles(
-	files []*FileInfo,
+	files []*storage.FileInfo,
 	fileDef *backup.File,
 	vars []string,
 	folderTime *backup.Timestamp,
@@ -528,7 +533,7 @@ func findGroups(
 	diskName string,
 	directoryName string,
 	fileName string,
-) (map[string][]*FileInfo, int) {
+) (map[string][]*storage.FileInfo, int) {
 	disk := FindDisk(diskName)
 	if disk == nil {
 		return nil, 0

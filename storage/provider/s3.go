@@ -1,4 +1,4 @@
-package storage
+package provider
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"strings"
+	storage "github.com/dreitier/cloudmon/storage/abstraction"
 )
 
 type S3Client struct {
@@ -59,7 +60,7 @@ func getClient(c *S3Client) (*s3.S3, error) {
 	return c.s3Client, nil
 }
 
-func (c *S3Client) List(diskName *string) (files []*File, err error) {
+func (c *S3Client) List(diskName *string) (files []*storage.File, err error) {
 	svc, err := getClient(c)
 
 	if err != nil {
@@ -93,7 +94,7 @@ func (c *S3Client) List(diskName *string) (files []*File, err error) {
 	return files, nil
 }
 
-func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*DirectoryInfo, error) {
+func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*storage.DirectoryInfo, error) {
 	svc, err := getClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
@@ -106,9 +107,9 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*DirectoryInfo,
 	}
 	log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
 
-	info := &DirectoryInfo{
+	info := &storage.DirectoryInfo{
 		Name:    diskName,
-		SubDirs: make(map[string]*DirectoryInfo),
+		SubDirs: make(map[string]*storage.DirectoryInfo),
 	}
 
 	appendFilesTo(info, result.Contents)
@@ -127,7 +128,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*DirectoryInfo,
 	return info, nil
 }
 
-func appendFilesTo(root *DirectoryInfo, objects []*s3.Object) {
+func appendFilesTo(root *storage.DirectoryInfo, objects []*s3.Object) {
 	for _, obj := range objects {
 		path := strings.Split(*obj.Key, "/")
 		fileName := path[len(path)-1]
@@ -136,15 +137,15 @@ func appendFilesTo(root *DirectoryInfo, objects []*s3.Object) {
 		for i := 0; i < len(path); i++ {
 			next := currentDir.SubDirs[path[i]]
 			if next == nil {
-				next = &DirectoryInfo{
+				next = &storage.DirectoryInfo{
 					Name:    path[i],
-					SubDirs: make(map[string]*DirectoryInfo),
+					SubDirs: make(map[string]*storage.DirectoryInfo),
 				}
 				currentDir.SubDirs[path[i]] = next
 			}
 			currentDir = next
 		}
-		file := &FileInfo{
+		file := &storage.FileInfo{
 			Name:      fileName,
 			Path:      strings.Join(path, "/"),
 			Timestamp: *obj.LastModified,
@@ -203,7 +204,7 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 	return diskNames, nil
 }
 
-func (c *S3Client) Download(disk string, file *FileInfo) (bytes io.ReadCloser, err error) {
+func (c *S3Client) Download(disk string, file *storage.FileInfo) (bytes io.ReadCloser, err error) {
 	fullName := file.Path + "/" + file.Name
 	out, err := c.get(&disk, &fullName)
 
@@ -214,7 +215,7 @@ func (c *S3Client) Download(disk string, file *FileInfo) (bytes io.ReadCloser, e
 	return out.Body, nil
 }
 
-func (c *S3Client) Delete(disk string, file *FileInfo) error {
+func (c *S3Client) Delete(disk string, file *storage.FileInfo) error {
 	//TODO: check out the s3 delete object documentation to make this work with versioned files
 	svc, err := getClient(c)
 
@@ -233,9 +234,9 @@ func (c *S3Client) Delete(disk string, file *FileInfo) error {
 	return nil
 }
 
-func appendToFileList(files []*File, output []*s3.Object) []*File {
+func appendToFileList(files []*storage.File, output []*s3.Object) []*storage.File {
 	for _, item := range output {
-		files = append(files, &File{Name: item.Key, Timestamp: item.LastModified, Size: item.Size})
+		files = append(files, &storage.File{Name: item.Key, Timestamp: item.LastModified, Size: item.Size})
 	}
 
 	return files

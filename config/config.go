@@ -12,8 +12,8 @@ import (
 )
 
 type configuration struct {
-	environments []*Environment
-	global       *global
+	environments []*EnvironmentConfiguration
+	global       *GlobalConfiguration
 	downloads 	 *DownloadsConfiguration
 }
 
@@ -57,11 +57,11 @@ func GetInstance() *configuration {
 	return instance
 }
 
-func (c *configuration) Global() *global {
+func (c *configuration) Global() *GlobalConfiguration {
 	return c.global
 }
 
-func (c *configuration) Environments() []*Environment {
+func (c *configuration) Environments() []*EnvironmentConfiguration {
 	return c.environments
 }
 
@@ -103,12 +103,12 @@ func initConfig() {
 		log.Fatalf("Failed to parse configuration file: %s", err)
 	}
 
-	instance.global = parseGlobal(cfg)
-	instance.downloads = parseDownloads(cfg.Sub("downloads"))
-	instance.environments = parseEnvironments(cfg.Sub("environments"))
+	instance.global = parseGlobalSection(cfg)
+	instance.downloads = parseDownloadsSection(cfg.Sub("downloads"))
+	instance.environments = parseEnvironmentsSection(cfg.Sub("environments"))
 }
 
-func parseDownloads(cfg Raw) *DownloadsConfiguration {
+func parseDownloadsSection(cfg Raw) *DownloadsConfiguration {
 	var r *DownloadsConfiguration
 
 	const paramEnabled = "enabled" 
@@ -127,7 +127,7 @@ func parseDownloads(cfg Raw) *DownloadsConfiguration {
 	return r
 }
 
-func parseGlobal(cfg Raw) *global {
+func parseGlobalSection(cfg Raw) *GlobalConfiguration {
 	logLevel := log.InfoLevel
 	if cfg.Has("log_level") {
 		parsedLevel, err := log.ParseLevel(cfg.String("log_level"))
@@ -161,16 +161,21 @@ func parseGlobal(cfg Raw) *global {
 		}
 	}
 
-	return &global{logLevel: logLevel, httpPort: httpPort, updateInterval: updateInterval, ignored: ignore}
+	return &GlobalConfiguration{
+		logLevel: logLevel, 
+		httpPort: httpPort, 
+		updateInterval: updateInterval, 
+		ignored: ignore,
+	}
 }
 
-func parseEnvironments(cfg Raw) []*Environment {
-	var envs []*Environment
+func parseEnvironmentsSection(cfg Raw) []*EnvironmentConfiguration {
+	var envs []*EnvironmentConfiguration
 
 	for envName := range cfg {
 		envCfg := cfg.Sub(envName)
 
-		env, err := parseEnvironment(envCfg, envName)
+		env, err := parseEnvironmentSection(envCfg, envName)
 
 		if err != nil {
 			log.Errorf("Environment '%s' could not be parsed: %s", envName, err)
@@ -187,7 +192,7 @@ func parseEnvironments(cfg Raw) []*Environment {
 	return envs
 }
 
-func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
+func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration, error) {
 	if envName == "" {
 		return nil, errors.New("Missing environment name")
 	}
@@ -196,7 +201,7 @@ func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
 		return nil, errors.New("Missing environment configuration entries")
 	}
 
-	var c *Client
+	var c *ClientConfiguration
 	const paramRegion = "region"
 	const paramForcePathStyle = "force_path_style"
 	const paramAccessKeyId = "access_key_id"
@@ -211,7 +216,10 @@ func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
 			return nil, errors.New("Parameter 'path' has been set, but is empty")
 		}
 
-		c = &Client{Directory: path, EnvName: envName}
+		c = &ClientConfiguration{
+			Directory: path, 
+			EnvName: envName,
+		}
 	} else {
 		region := "eu-central-1"
 		if cfg.Has(paramRegion) {
@@ -223,7 +231,7 @@ func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
 			forcePathStyle = cfg.Bool(paramForcePathStyle)
 		}
 
-		c = &Client{
+		c = &ClientConfiguration{
 			EnvName:        envName,
 			Region:         region,
 			ForcePathStyle: forcePathStyle,
@@ -239,5 +247,9 @@ func parseEnvironment(cfg Raw, envName string) (*Environment, error) {
 		definitions = cfg.String("definitions")
 	}
 
-	return &Environment{Name: envName, Client: c, Definitions: definitions}, nil
+	return &EnvironmentConfiguration{
+		Name: envName, 
+		Client: c, 
+		Definitions: definitions,
+	}, nil
 }

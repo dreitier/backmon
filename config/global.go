@@ -5,26 +5,26 @@ import (
 	"time"
 )
 
-type global struct {
+type GlobalConfiguration struct {
 	logLevel       log.Level
 	httpPort       int
 	updateInterval time.Duration
 	ignored        map[string]struct{}
 }
 
-func (g *global) LogLevel() log.Level {
-	return g.logLevel
+func (self *GlobalConfiguration) LogLevel() log.Level {
+	return self.logLevel
 }
 
-func (g *global) HttpPort() int {
-	return g.httpPort
+func (self *GlobalConfiguration) HttpPort() int {
+	return self.httpPort
 }
 
-func (g *global) UpdateInterval() time.Duration {
-	return g.updateInterval
+func (self *GlobalConfiguration) UpdateInterval() time.Duration {
+	return self.updateInterval
 }
 
-func (g *global) IgnoreDisk(disk string) bool {
-	_, ignored := g.ignored[disk]
+func (self *GlobalConfiguration) IgnoreDisk(disk string) bool {
+	_, ignored := self.ignored[disk]
 	return ignored
 }

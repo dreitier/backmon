@@ -14,7 +14,7 @@ type Client interface {
 	Delete(disk string, file *storage.FileInfo) error
 }
 
-func NewClient(config *config.Client) Client {
+func NewClient(config *config.ClientConfiguration) Client {
 	if config.Directory == "" {
 		return &provider.S3Client{
 			EnvName:        config.EnvName,

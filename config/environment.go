@@ -1,12 +1,12 @@
 package config
 
-type Environment struct {
+type EnvironmentConfiguration struct {
 	Name        string
 	Definitions string
-	Client      *Client
+	Client      *ClientConfiguration
 }
 
-type Client struct {
+type ClientConfiguration struct {
 	EnvName        string
 	Directory      string
 	Region         string

@@ -14,6 +14,7 @@ import (
 type configuration struct {
 	environments []*Environment
 	global       *global
+	downloads 	 *DownloadsConfiguration
 }
 
 var (
@@ -27,7 +28,6 @@ const (
 	CfgFileName = "config.yaml"
 	PathLocal   = "."
 	PathGlobal  = "/etc/cloudmon"
-
 )
 
 func init() {
@@ -65,6 +65,10 @@ func (c *configuration) Environments() []*Environment {
 	return c.environments
 }
 
+func (c *configuration) Downloads() *DownloadsConfiguration {
+	return c.downloads
+}
+
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
@@ -100,7 +104,27 @@ func initConfig() {
 	}
 
 	instance.global = parseGlobal(cfg)
+	instance.downloads = parseDownloads(cfg.Sub("downloads"))
 	instance.environments = parseEnvironments(cfg.Sub("environments"))
+}
+
+func parseDownloads(cfg Raw) *DownloadsConfiguration {
+	var r *DownloadsConfiguration
+
+	const paramEnabled = "enabled" 
+
+	enabled := false
+	if (cfg.Has(paramEnabled)) {
+		enabled = cfg.Bool(paramEnabled)
+	}
+
+	log.Infof("Downloads enabled: %t", enabled)
+
+	r = &DownloadsConfiguration{
+		Enabled: enabled,
+	}
+
+	return r
 }
 
 func parseGlobal(cfg Raw) *global {

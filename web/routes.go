@@ -5,12 +5,15 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"net/url"
+	"github.com/dreitier/cloudmon/config"
+	log "github.com/sirupsen/logrus"
 )
 
 var Router *mux.Router
 
 const DiskInfoRoute = "disk_info_route"
 const LatestFileRoute = "latest_file_route"
+const HttpMethodGet = "GET"
 
 func init () {
 	Router = mux.NewRouter().UseEncodedPath()
@@ -19,10 +22,14 @@ func init () {
 	Router.Handle("/metrics", metrics.Handler())
 
 	Router.HandleFunc("/api", EnvHandler)
-	Router.HandleFunc("/api/{disk}", DiskInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{disk}/{dir}", DirectoryInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{disk}/{dir}/{file}", FileInfoHandler).Methods("GET")
-	Router.HandleFunc("/api/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods("GET")
+	Router.HandleFunc("/api/{disk}", DiskInfoHandler).Methods(HttpMethodGet)
+	Router.HandleFunc("/api/{disk}/{dir}", DirectoryInfoHandler).Methods(HttpMethodGet)
+	Router.HandleFunc("/api/{disk}/{dir}/{file}", FileInfoHandler).Methods(HttpMethodGet)
+
+	if config.GetInstance().Downloads().Enabled {
+		log.Debug("Registering GET handler for artifact downloads")
+		Router.HandleFunc("/api/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet)
+	}
 }
 
 // Base route to access the API Documentation.

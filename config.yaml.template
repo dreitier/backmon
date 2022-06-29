@@ -2,6 +2,9 @@ port: 8000
 log_level: debug
 update_interval: 30
 
+downloads: 
+  enabled: false
+
 environments:
   aws-test-environment:
     access_key_id: AWS_ACCESS_KEY_1

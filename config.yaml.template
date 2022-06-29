@@ -2,7 +2,7 @@ port: 8000
 log_level: debug
 update_interval: 30
 
-http
+http:
   basic_auth:
     username: my_username
     password: my_password

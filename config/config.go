@@ -12,9 +12,10 @@ import (
 )
 
 type configuration struct {
-	environments []*EnvironmentConfiguration
 	global       *GlobalConfiguration
-	downloads 	 *DownloadsConfiguration
+	http         *HttpConfiguration
+	downloads    *DownloadsConfiguration
+	environments []*EnvironmentConfiguration
 }
 
 var (
@@ -69,6 +70,10 @@ func (c *configuration) Downloads() *DownloadsConfiguration {
 	return c.downloads
 }
 
+func (c *configuration) Http() *HttpConfiguration {
+	return c.http
+}
+
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
@@ -104,8 +109,50 @@ func initConfig() {
 	}
 
 	instance.global = parseGlobalSection(cfg)
+	instance.http = parseHttpSection(cfg.Sub("http"))
 	instance.downloads = parseDownloadsSection(cfg.Sub("downloads"))
 	instance.environments = parseEnvironmentsSection(cfg.Sub("environments"))
+}
+
+func parseHttpSection(cfg Raw) *HttpConfiguration {
+	var r *HttpConfiguration
+
+	const paramBasicAuth = "basic_auth" 
+
+	var basicAuth *BasicAuthConfiguration
+
+	if (cfg.Has(paramBasicAuth)) {
+		basicAuth = parseBasicAuthConfiguration(cfg.Sub(paramBasicAuth))
+	}
+
+	log.Infof("Using HTTP Basic auth: %t", basicAuth != nil)
+
+	r = &HttpConfiguration{
+		BasicAuth: basicAuth,
+	}
+
+	return r
+}
+
+func parseBasicAuthConfiguration(cfg Raw) *BasicAuthConfiguration {
+	var r *BasicAuthConfiguration
+
+	const paramUsername = "username"
+	const paramPassword = "password"
+
+	if (cfg.Has(paramUsername) && cfg.Has(paramPassword)) {
+		username := cfg.String(paramUsername)
+		password := cfg.String(paramPassword)
+
+		if username != "" && password != "" {
+			r = &BasicAuthConfiguration{
+				Username: cfg.String(paramUsername),
+				Password: cfg.String(paramPassword),
+			}
+		}
+	}
+
+	return r
 }
 
 func parseDownloadsSection(cfg Raw) *DownloadsConfiguration {

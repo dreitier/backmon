@@ -18,7 +18,7 @@ func StartServer() {
 	r := mux.NewRouter()
 	//r.HandleFunc("/{disk}", handler)
 
-	r.PathPrefix("/").Handler(Router)
+	r.PathPrefix("/").Handler(GetInstance().endpointsRouter)
 
 	srv := &http.Server{
 		Handler: r,

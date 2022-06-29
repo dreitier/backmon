@@ -7,29 +7,70 @@ import (
 	"net/url"
 	"github.com/dreitier/cloudmon/config"
 	log "github.com/sirupsen/logrus"
+	"github.com/goji/httpauth"
+	"sync"
 )
 
-var Router *mux.Router
+type routeConfiguration struct {
+	endpointsRouter *mux.Router
+}
+
+var (
+	instance *routeConfiguration
+	once     sync.Once
+)
 
 const DiskInfoRoute = "disk_info_route"
 const LatestFileRoute = "latest_file_route"
 const HttpMethodGet = "GET"
 
 func init () {
-	Router = mux.NewRouter().UseEncodedPath()
-	Router.StrictSlash(true)
-	Router.HandleFunc("/", BaseHandler)
-	Router.Handle("/metrics", metrics.Handler())
-
-	Router.HandleFunc("/api", EnvHandler)
-	Router.HandleFunc("/api/{disk}", DiskInfoHandler).Methods(HttpMethodGet)
-	Router.HandleFunc("/api/{disk}/{dir}", DirectoryInfoHandler).Methods(HttpMethodGet)
-	Router.HandleFunc("/api/{disk}/{dir}/{file}", FileInfoHandler).Methods(HttpMethodGet)
-
-	if config.GetInstance().Downloads().Enabled {
-		log.Debug("Registering GET handler for artifact downloads")
-		Router.HandleFunc("/api/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet)
+	instance = &routeConfiguration{
+		endpointsRouter: mux.NewRouter().UseEncodedPath(),
 	}
+}
+
+func GetInstance() *routeConfiguration {
+	once.Do(func() {
+		instance.endpointsRouter.StrictSlash(true)
+		instance.endpointsRouter.HandleFunc("/", BaseHandler)
+		instance.endpointsRouter.Handle("/metrics", metrics.Handler())
+
+		// #2: for /api, we are using an HTTP Basic Auth middleware
+		apiEndpoint := instance.endpointsRouter.PathPrefix("/api").Subrouter()
+
+		apiEndpoint.Use(loggingMiddleware)
+
+		if config.GetInstance().Http().BasicAuth != nil {
+			log.Debug("Registering Basic Auth middleware")
+
+			apiEndpoint.Use(httpauth.SimpleBasicAuth(
+				config.GetInstance().Http().BasicAuth.Username,
+				config.GetInstance().Http().BasicAuth.Password,
+			))
+		}
+
+		apiEndpoint.HandleFunc("", EnvHandler)
+		apiEndpoint.HandleFunc("/{disk}", DiskInfoHandler).Methods(HttpMethodGet)
+		apiEndpoint.HandleFunc("/{disk}/{dir}", DirectoryInfoHandler).Methods(HttpMethodGet)
+		apiEndpoint.HandleFunc("/{disk}/{dir}/{file}", FileInfoHandler).Methods(HttpMethodGet)
+	
+		if config.GetInstance().Downloads().Enabled {
+			log.Debug("Registering GET handler for artifact downloads")
+			apiEndpoint.HandleFunc("/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet)
+		}
+	})
+
+	return instance
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Do stuff here
+        log.Debugf("GET %s", r.RequestURI)
+        // Call the next handler, which can be another middleware in the chain, or the final handler.
+        next.ServeHTTP(w, r)
+    })
 }
 
 // Base route to access the API Documentation.

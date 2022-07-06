@@ -30,12 +30,17 @@ You can find ready-to-run Docker containers at [dreitier/cloudmon](https://hub.d
 
 ## Development
 ### Creating new releases
-A new release (artifact & Docker container) is automatically created when a new Git tag is pushed:
+
+1. Update the [CHANGELOG.md](changelog).
+2. Create a new release (artifact & Docker container) by pushing a new Git tag:
 
 ```bash
 git tag x.y.z
 git push origin x.y.z
 ```
+
+## Changelog
+The changelog is kept in the [CHANGELOG.md](CHANGELOG.md) file.
 
 ## Support
 This software is provided as-is. You can open an issue in GitHub's issue tracker at any time. But we can't promise to get it fixed in the near future.

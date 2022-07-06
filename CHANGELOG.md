@@ -5,8 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Fixed
+
+## 1.3.0 - 2022-07-05
+### Added
+- Version (Git tag) and Git commit is shown during startup
+
+## 1.2.1 - 2022-06-29
+### Added
+- `http.basic_auth` can now be used, see [configuration overview](https://dreitier.github.io/cloudmon-docs/reference/cloudmon-configuration/overview).
+
+## 1.2.0 - 2022-05-30
+### Changed
 - Replaced `bucket` with `disk` to make a clear distinction between S3 *buckets* and *cloudmon* *disks*
+
+### Fixed
 - Files at root level now get detected properly
 - Valid aliases no longer get reported as invalid
 

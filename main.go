@@ -8,7 +8,22 @@ import (
 	"time"
 )
 
+const app = "cloudmon"
+var gitRepo = "dreitier/cloudmon"
+var gitCommit = "unknown"
+var gitTag = "unknown"
+
+func printVersion() {
+	if gitTag == "" {
+		gitTag = "err-no-git-tag"
+	}
+
+	log.Printf("%s (dist=%s; version=%s; commit=%s)", app, gitRepo, gitTag, gitCommit)
+}
+
 func main() {
+	printVersion()
+	
 	if !config.HasGlobalDebugEnabled() {
 		logLevel := config.GetInstance().Global().LogLevel()
 

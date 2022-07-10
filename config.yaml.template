@@ -10,6 +10,9 @@ http:
 downloads: 
   enabled: false
 
+ignore_disks:
+  - 123456789000-mybucket
+
 environments:
   aws-test-environment:
     access_key_id: AWS_ACCESS_KEY_1

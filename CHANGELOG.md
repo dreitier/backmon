@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- updated README.md to reflect the naming change from _ignore_buckets_ to _ignore_disks
 
 ## 1.3.0 - 2022-07-05
 ### Added
@@ -28,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New metric `files_maturity_seconds`, which reports the value of `retention-age`
 - New metric `files_young`, which reports the number of files that are younger than the retention age
 - New metric `latest_creation_aim_seconds`, which reports the last time at which a backup should have occurred - based on the schedule specified in `cron`
-- Global config option `ignore_buckets`, which allows for ignoring buckets by name
+- Global config option `ignore_disks`, which allows for ignoring buckets by name
 - New metric `status`, which reports values `≥1` if there were errors while scraping a bucket, and `0` if the bucket is ok
 
 ### Changed

@@ -2,14 +2,14 @@ package storage
 
 import (
 	"bytes"
-	"github.com/dreitier/cloudmon/backup"
-	"github.com/dreitier/cloudmon/config"
-	"github.com/dreitier/cloudmon/metrics"
-	storage "github.com/dreitier/cloudmon/storage/abstraction"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dreitier/cloudmon/backup"
+	"github.com/dreitier/cloudmon/config"
+	"github.com/dreitier/cloudmon/metrics"
+	storage "github.com/dreitier/cloudmon/storage/abstraction"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"sort"
@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	clients = make(map[string]*clientData)
-	mutex   = &sync.Mutex{}
-	ignoreFile = &storage.FileInfo{Name:".cloudmonignore"}
+	clients    = make(map[string]*clientData)
+	mutex      = &sync.Mutex{}
+	ignoreFile = &storage.FileInfo{Name: ".cloudmonignore"}
 )
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 	for _, env := range envs {
 		clients[env.Name] = &clientData{
 			DefinitionFilename: env.Definitions,
-			Definition:         &storage.FileInfo{Name:env.Definitions},
+			Definition:         &storage.FileInfo{Name: env.Definitions},
 			Client:             NewClient(env.Client),
 			Disks:              make(map[string]*DiskData),
 		}
@@ -40,7 +40,7 @@ type clientData struct {
 	DefinitionFilename string
 	Definition         *storage.FileInfo
 	Client             Client
-	Disks            map[string]*DiskData
+	Disks              map[string]*DiskData
 }
 
 func (client *clientData) updateDiskInfo() error {
@@ -73,6 +73,7 @@ func (client *clientData) updateDiskInfo() error {
 	// add disks that are new on the client to the map
 	for _, diskName := range diskNames {
 		if config.GetInstance().Global().IgnoreDisk(diskName) {
+			log.Debugf("Not adding newly discovered disk %s, because it's on the ignore list", diskName)
 			continue
 		}
 		_, exists := client.Disks[diskName]
@@ -123,13 +124,13 @@ type DiskData struct {
 	definitionsHash [sha1.Size]byte
 }
 
-func (disk *DiskData)  MarshalJSON() ([]byte, error) {
+func (disk *DiskData) MarshalJSON() ([]byte, error) {
 	return json.Marshal(disk.Name)
 }
 
 func (disk *DiskData) updateDefinitions(data io.Reader) {
 	var buf bytes.Buffer
-	
+
 	duplicate := io.TeeReader(data, &buf)
 	changed, err := disk.hashChanged(duplicate)
 	if err != nil {
@@ -138,7 +139,7 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 		disk.metrics.DefinitionsMissing()
 		return
 	}
-	
+
 	if !changed {
 		log.Debugf("Backup definitions in '%s' are unchanged.", disk.Name)
 		return
@@ -151,7 +152,7 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 		disk.metrics.DefinitionsMissing()
 		return
 	}
-	
+
 	disk.metrics.DefinitionsUpdated()
 	disk.groups = make([]map[string][]*storage.FileInfo, len(disk.Definition))
 }
@@ -265,7 +266,7 @@ func UpdateDiskInfo() {
 				disk.metrics.DefinitionsMissing()
 				continue
 			}
-			
+
 			disk.updateDefinitions(buf)
 			_ = buf.Close()
 

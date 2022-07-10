@@ -6,10 +6,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/dreitier/cloudmon/config"
+	storage "github.com/dreitier/cloudmon/storage/abstraction"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"strings"
-	storage "github.com/dreitier/cloudmon/storage/abstraction"
 )
 
 type S3Client struct {
@@ -184,15 +185,21 @@ func (c *S3Client) findAvailableDisks() ([]*s3.Bucket, error) {
 		return nil, fmt.Errorf("Failed to list S3 disks: %s", err)
 	}
 
-	for _, bucket := range result.Buckets {
-		_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(*bucket.Name)})
+	for _, disk := range result.Buckets {
+		// don't try to list items in ignored disks
+		diskName := *disk.Name
+		if config.GetInstance().Global().IgnoreDisk(diskName) {
+			log.Debugf("Not listing files in disk %s, because it's on the ignore list", diskName)
+			continue
+		}
+		_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(diskName)})
 
 		if err != nil {
-			log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", bucket, err)
+			log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", disk, err)
 			continue
 		}
 
-		r = append(r, bucket)
+		r = append(r, disk)
 	}
 
 	return r, nil

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - updated README.md to reflect the naming change from _ignore_buckets_ to _ignore_disks
+- don't try to list items in ignored disks to avoid errors
 
 ## 1.3.0 - 2022-07-05
 ### Added

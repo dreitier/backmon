@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 1.3.1 - 2022-07-12
 ### Fixed
 - updated README.md to reflect the naming change from _ignore_buckets_ to _ignore_disks_
 - don't try to list items in ignored disks to avoid errors

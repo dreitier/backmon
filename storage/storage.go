@@ -9,7 +9,7 @@ import (
 	"github.com/dreitier/cloudmon/backup"
 	"github.com/dreitier/cloudmon/config"
 	"github.com/dreitier/cloudmon/metrics"
-	storage "github.com/dreitier/cloudmon/storage/abstraction"
+	fs "github.com/dreitier/cloudmon/storage/fs"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"sort"
@@ -21,7 +21,7 @@ import (
 var (
 	clients    = make(map[string]*clientData)
 	mutex      = &sync.Mutex{}
-	ignoreFile = &storage.FileInfo{Name: ".cloudmonignore"}
+	ignoreFile = &fs.FileInfo{Name: ".cloudmonignore"}
 )
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 	for _, env := range envs {
 		clients[env.Name] = &clientData{
 			DefinitionFilename: env.Definitions,
-			Definition:         &storage.FileInfo{Name: env.Definitions},
+			Definition:         &fs.FileInfo{Name: env.Definitions},
 			Client:             NewClient(env.Client),
 			Disks:              make(map[string]*DiskData),
 		}
@@ -38,7 +38,7 @@ func init() {
 
 type clientData struct {
 	DefinitionFilename string
-	Definition         *storage.FileInfo
+	Definition         *fs.FileInfo
 	Client             Client
 	Disks              map[string]*DiskData
 }
@@ -119,7 +119,7 @@ type DiskData struct {
 	Name            string
 	SafeName        string
 	metrics         *metrics.Disk
-	groups          []map[string][]*storage.FileInfo
+	groups          []map[string][]*fs.FileInfo
 	Definition      backup.Definition
 	definitionsHash [sha1.Size]byte
 }
@@ -154,7 +154,7 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 	}
 
 	disk.metrics.DefinitionsUpdated()
-	disk.groups = make([]map[string][]*storage.FileInfo, len(disk.Definition))
+	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition))
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -194,7 +194,7 @@ func (disk *DiskData) maxDepth() uint {
 
 type TemporalFile struct {
 	Time time.Time
-	File *storage.FileInfo
+	File *fs.FileInfo
 }
 
 type FileGroup []TemporalFile
@@ -274,7 +274,7 @@ func UpdateDiskInfo() {
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
 				// don't just return, we still need to update the metrics!
-				files = &storage.DirectoryInfo{Name: diskName}
+				files = &fs.DirectoryInfo{Name: diskName}
 			}
 
 			updateMetrics(client.Client, disk, files)
@@ -284,7 +284,7 @@ func UpdateDiskInfo() {
 	log.Debug("... disks info updated")
 }
 
-func updateMetrics(client Client, disk *DiskData, root *storage.DirectoryInfo) {
+func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 	now := time.Now()
 	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
@@ -297,9 +297,9 @@ func updateMetrics(client Client, disk *DiskData, root *storage.DirectoryInfo) {
 			disk.metrics.FileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
 		}
 
-		currentGroups := make(map[string][]*storage.FileInfo, len(fileGroups))
+		currentGroups := make(map[string][]*fs.FileInfo, len(fileGroups))
 		for group, fileMatches := range fileGroups {
-			latest := make([]*storage.FileInfo, len(dirDef.Files))
+			latest := make([]*fs.FileInfo, len(dirDef.Files))
 			for k, fileDef := range dirDef.Files {
 				matches := fileMatches[k]
 				sort.Sort(matches)
@@ -328,7 +328,7 @@ func updateMetrics(client Client, disk *DiskData, root *storage.DirectoryInfo) {
 }
 
 func findMatchingDirs(
-	dir *storage.DirectoryInfo,
+	dir *fs.DirectoryInfo,
 	dirDef *backup.Directory,
 	level uint,
 	offset uint,
@@ -381,7 +381,7 @@ func logDir(level uint, dir string) {
 }
 
 func findMatchingFiles(
-	dir *storage.DirectoryInfo,
+	dir *fs.DirectoryInfo,
 	dirDef *backup.Directory,
 	vars []string,
 ) []FileGroup {
@@ -434,7 +434,7 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 }
 
 func collectMatchingFiles(
-	files []*storage.FileInfo,
+	files []*fs.FileInfo,
 	fileDef *backup.BackupFileDefinition,
 	vars []string,
 	folderTime *backup.Timestamp,
@@ -538,7 +538,7 @@ func findGroups(
 	diskName string,
 	directoryName string,
 	fileName string,
-) (map[string][]*storage.FileInfo, int) {
+) (map[string][]*fs.FileInfo, int) {
 	disk := FindDisk(diskName)
 	if disk == nil {
 		return nil, 0

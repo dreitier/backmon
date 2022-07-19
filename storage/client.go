@@ -2,16 +2,16 @@ package storage
 
 import (
 	"github.com/dreitier/cloudmon/config"
-	storage "github.com/dreitier/cloudmon/storage/abstraction"
+	fs "github.com/dreitier/cloudmon/storage/fs"
 	provider "github.com/dreitier/cloudmon/storage/provider"
 	"io"
 )
 
 type Client interface {
 	GetDiskNames() ([]string, error)
-	GetFileNames(disk string, maxDepth uint) (*storage.DirectoryInfo, error)
-	Download(disk string, file *storage.FileInfo) (bytes io.ReadCloser, err error)
-	Delete(disk string, file *storage.FileInfo) error
+	GetFileNames(disk string, maxDepth uint) (*fs.DirectoryInfo, error)
+	Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error)
+	Delete(disk string, file *fs.FileInfo) error
 }
 
 func NewClient(config *config.ClientConfiguration) Client {

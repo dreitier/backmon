@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	storage "github.com/dreitier/cloudmon/storage/abstraction"
+	fs "github.com/dreitier/cloudmon/storage/fs"
 )
 
 type LocalClient struct {
@@ -17,7 +17,7 @@ type LocalClient struct {
 	EnvName   string
 }
 
-func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*storage.DirectoryInfo, error) {
+func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
 	if diskName != c.Directory {
 		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", diskName))
 	}
@@ -25,7 +25,7 @@ func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*storage.Dir
 	return scanDir(diskName, "", "", maxDepth)
 }
 
-func scanDir(root string, path string, dir string, maxDepth uint) (*storage.DirectoryInfo, error) {
+func scanDir(root string, path string, dir string, maxDepth uint) (*fs.DirectoryInfo, error) {
 	path = filepath.Join(path, dir)
 	fileInfos, err := ioutil.ReadDir(filepath.Join(root, path))
 	if err != nil {
@@ -33,9 +33,9 @@ func scanDir(root string, path string, dir string, maxDepth uint) (*storage.Dire
 		return nil, err
 	}
 
-	info := &storage.DirectoryInfo{
+	info := &fs.DirectoryInfo{
 		Name:    dir,
-		SubDirs: make(map[string]*storage.DirectoryInfo),
+		SubDirs: make(map[string]*fs.DirectoryInfo),
 	}
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {
@@ -47,7 +47,7 @@ func scanDir(root string, path string, dir string, maxDepth uint) (*storage.Dire
 				info.SubDirs[subDir.Name] = subDir
 			}
 		} else {
-			file := &storage.FileInfo{
+			file := &fs.FileInfo{
 				Name:      fileInfo.Name(),
 				Path:      path,
 				Timestamp: fileInfo.ModTime(),
@@ -68,7 +68,7 @@ func (c *LocalClient) GetDiskNames() ([]string, error) {
 	return diskNames, nil
 }
 
-func (c *LocalClient) Download(disk string, file *storage.FileInfo) (bytes io.ReadCloser, err error) {
+func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {
 	if disk != c.Directory {
 		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", disk))
 	}
@@ -82,7 +82,7 @@ func (c *LocalClient) Download(disk string, file *storage.FileInfo) (bytes io.Re
 	return bytes, nil
 }
 
-func (c *LocalClient) Delete(disk string, file *storage.FileInfo) error {
+func (c *LocalClient) Delete(disk string, file *fs.FileInfo) error {
 	if disk != c.Directory {
 		return fmt.Errorf("disk %#q does not exist", disk)
 	}

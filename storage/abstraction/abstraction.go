@@ -16,9 +16,3 @@ type FileInfo struct {
 	Size      int64
 	Timestamp time.Time
 }
-
-type File struct {
-	Name      *string
-	Timestamp *time.Time
-	Size      *int64
-}

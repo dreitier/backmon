@@ -92,9 +92,10 @@ func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 	return nil
 }
 
-func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*File {
-	files := make([]*File, 0, len(raw))
+func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*BackupFileDefinition {
+	files := make([]*BackupFileDefinition, 0, len(raw))
 	aliases := make(map[string]empty)
+	
 	for rawPattern, rawFile := range raw {
 		pattern, err := ParseFilePattern(rawPattern)
 		if err != nil {
@@ -130,7 +131,7 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Fil
 			aliases[alias] = empty{}
 		}
 
-		file := &File{
+		file := &BackupFileDefinition{
 			Pattern:         rawPattern,
 			Filter:          pattern,
 			VariableMapping: variables,
@@ -465,7 +466,7 @@ type Directory struct {
 	Alias        string
 	SafeAlias    string
 	Filter       DirectoryFilter
-	Files        []*File
+	Files        []*BackupFileDefinition
 	ActiveGroups []string
 }
 
@@ -505,7 +506,7 @@ type VariableDefinition struct {
 	Fuse   bool
 }
 
-type File struct {
+type BackupFileDefinition struct {
 	Pattern         string
 	Filter          *regexp.Regexp
 	VariableMapping []VariableReference
@@ -518,7 +519,7 @@ type File struct {
 	RetentionAge    time.Duration
 }
 
-func (file *File) MarshalJSON() ([]byte, error) {
+func (file *BackupFileDefinition) MarshalJSON() ([]byte, error) {
 	return json.Marshal(file.Alias)
 }
 

@@ -128,7 +128,7 @@ func findFile(
 	diskName string,
 	directoryName string,
 	fileName string,
-) *backup.File {
+) *backup.BackupFileDefinition {
 	dir := findDirectory(w, diskName, directoryName)
 	if dir == nil {
 		return nil

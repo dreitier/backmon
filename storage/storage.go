@@ -216,7 +216,7 @@ func (list FileGroup) Swap(i int, j int) {
 	list[i], list[j] = list[j], list[i]
 }
 
-func (list FileGroup) Purge(fileDef *backup.File, path string, disk string, client Client) (remainder FileGroup, young uint64) {
+func (list FileGroup) Purge(fileDef *backup.BackupFileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
 	threshold := time.Now().UTC().Add(-fileDef.RetentionAge)
 	young = uint64(sort.Search(len(list), func(i int) bool { return list[i].Time.Before(threshold) }))
 
@@ -435,7 +435,7 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 
 func collectMatchingFiles(
 	files []*storage.FileInfo,
-	fileDef *backup.File,
+	fileDef *backup.BackupFileDefinition,
 	vars []string,
 	folderTime *backup.Timestamp,
 	matches FileGroup,
@@ -592,7 +592,7 @@ func FindFile(
 	diskName string,
 	directoryName string,
 	fileName string,
-) *backup.File {
+) *backup.BackupFileDefinition {
 	dir := FindDirectory(diskName, directoryName)
 	if dir == nil {
 		return nil

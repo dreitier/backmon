@@ -1,0 +1,7 @@
+'./backups':
+  alias: postgres
+  fuse:
+  files:
+    'dump-%Y%M%D.sql':
+      alias: pgdump
+      schedule: 0 1 * * *

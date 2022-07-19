@@ -12,7 +12,7 @@ func getLatestFileInSlice(files []*fs.FileInfo) *fs.FileInfo{
 		if latestFile == nil {
 			latestFile = file
 		} else {
-			if latestFile.Timestamp.Before(file.Timestamp) {
+			if latestFile.ModifiedAt.Before(file.ModifiedAt) {
 				latestFile = file
 			}
 		}

@@ -14,6 +14,7 @@ require (
 	github.com/prometheus/common v0.6.0 // indirect
 	github.com/prometheus/procfs v0.0.3 // indirect
 	github.com/sirupsen/logrus v1.4.2
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 go 1.13

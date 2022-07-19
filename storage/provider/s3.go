@@ -9,7 +9,10 @@ import (
 	"github.com/dreitier/cloudmon/config"
 	fs "github.com/dreitier/cloudmon/storage/fs"
 	log "github.com/sirupsen/logrus"
+	dotstat "github.com/dreitier/cloudmon/storage/fs/dotstat"
 	"io"
+	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -67,55 +70,112 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 
 	// get items from the diskName
 	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName})
+	
 	if err != nil {
 		return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
 	}
+
 	log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
 
-	info := &fs.DirectoryInfo{
+	bucketRoot := &fs.DirectoryInfo{
 		Name:    diskName,
 		SubDirs: make(map[string]*fs.DirectoryInfo),
 	}
 
-	appendFilesTo(info, result.Contents)
+	dotStatFiles := make(map[string /* path to regular file*/]string /* path to .stat file */)
+
+	c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
 
 	// if the diskName held more than $maxKeys items, fetch them until we got them all
 	for *result.IsTruncated {
 		result, err = svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName, Marker: result.NextMarker})
+		
 		if err != nil {
 			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
 		}
+
 		log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
 
-		appendFilesTo(info, result.Contents)
+		c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
 	}
 
-	return info, nil
+	dotstat.ApplyDotStatValuesRecursively(dotStatFiles, bucketRoot)
+	c.cleanupTemporaryFiles(&dotStatFiles)
+
+	return bucketRoot, nil
 }
 
-func appendFilesTo(root *fs.DirectoryInfo, objects []*s3.Object) {
+// Clean up files which have been temporary downloaded for .stat introspection
+func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string /* path to regular file*/]string /* path to .stat file */) {
+	for _, pathToDotStatFile :=  range *dotStatFiles {
+		log.Debugf("Removing temporary file %s", pathToDotStatFile)
+		err := os.Remove(pathToDotStatFile)
+
+		if err != nil {
+			log.Errorf("Unable to remove temporary file %s: %s", pathToDotStatFile, err)
+		}
+	}
+}
+
+func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objects []*s3.Object, dotStatFiles *map[string /* path to regular file*/]string /* path to .stat file */) {
 	for _, obj := range objects {
-		path := strings.Split(*obj.Key, "/")
-		fileName := path[len(path)-1]
-		path = path[0 : len(path)-1]
+		pathSegments := strings.Split(*obj.Key, "/")
+		fileName := pathSegments[len(pathSegments)-1]
+		pathSegments = pathSegments[0 : len(pathSegments)-1]
 		currentDir := root
-		for i := 0; i < len(path); i++ {
-			next := currentDir.SubDirs[path[i]]
+
+		for i := 0; i < len(pathSegments); i++ {
+			next := currentDir.SubDirs[pathSegments[i]]
+			
 			if next == nil {
 				next = &fs.DirectoryInfo{
-					Name:    path[i],
+					Name:    pathSegments[i],
 					SubDirs: make(map[string]*fs.DirectoryInfo),
 				}
-				currentDir.SubDirs[path[i]] = next
+
+				currentDir.SubDirs[pathSegments[i]] = next
 			}
+
 			currentDir = next
 		}
-		file := &fs.FileInfo{
-			Name:      fileName,
-			Path:      strings.Join(path, "/"),
-			Timestamp: *obj.LastModified,
-			Size:      *obj.Size,
+
+		parentPath := strings.Join(pathSegments, "/")
+
+		// if object is a .stat file, it is downloaded for later introspection
+		if dotstat.IsStatFile(fileName) {
+			s3PathToStatFile := parentPath + "/" + fileName
+			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile) 
+
+			// TODO make temp directory configurable
+			tempFile, err := ioutil.TempFile(os.TempDir(), "cloudmon_" + strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+
+			if err != nil {
+				log.Errorf("Unable to create temporary file for .stat: %s", err)
+				continue
+			}
+
+			localAbsolutePath :=  tempFile.Name()
+
+			// .stat files are registered for later examination
+			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
+			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
+			byteStreamContent, _ := ioutil.ReadAll(s3OutObject.Body)
+			
+			tempFile.Write(byteStreamContent)
+			(*dotStatFiles)[s3PathToNonStatFile] = localAbsolutePath
+
+			continue
 		}
+
+		file := &fs.FileInfo{
+			Name:      	fileName,
+			Parent:     parentPath,
+			BornAt: 	*obj.LastModified,
+			ModifiedAt: *obj.LastModified,
+			ArchivedAt: *obj.LastModified,
+			Size:      	*obj.Size,
+		}
+
 		currentDir.Files = append(currentDir.Files, file)
 	}
 }
@@ -188,7 +248,7 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 }
 
 func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {
-	fullName := file.Path + "/" + file.Name
+	fullName := file.Parent + "/" + file.Name
 	out, err := c.get(&disk, &fullName)
 
 	if err != nil {
@@ -205,7 +265,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	if err != nil {
 		return fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
-	fullName := file.Path + "/" + file.Name
+	fullName := file.Parent + "/" + file.Name
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
 	out, err := svc.DeleteObject(&delObjectInput)
 	fmt.Sprint(out)

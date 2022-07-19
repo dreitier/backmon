@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	fs "github.com/dreitier/cloudmon/storage/fs"
+	log "github.com/sirupsen/logrus"
+	dotstat "github.com/dreitier/cloudmon/storage/fs/dotstat"
 )
 
 type LocalClient struct {
@@ -25,39 +27,58 @@ func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.Director
 	return scanDir(diskName, "", "", maxDepth)
 }
 
-func scanDir(root string, path string, dir string, maxDepth uint) (*fs.DirectoryInfo, error) {
-	path = filepath.Join(path, dir)
-	fileInfos, err := ioutil.ReadDir(filepath.Join(root, path))
+func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+	currentSubdirectoryPath := filepath.Join(fullSubdirectoryPath, directoryName)
+	absoluteSubdirectoryPath := filepath.Join(root, currentSubdirectoryPath)
+	fileInfos, err := ioutil.ReadDir(absoluteSubdirectoryPath)
+	
 	if err != nil {
 		//TODO: log error
 		return nil, err
 	}
 
-	info := &fs.DirectoryInfo{
-		Name:    dir,
+	directoryContainer := &fs.DirectoryInfo{
+		Name:    directoryName,
 		SubDirs: make(map[string]*fs.DirectoryInfo),
 	}
+
+	dotStatFiles := make(map[string]string)
+
 	for _, fileInfo := range fileInfos {
+		// if current item is a directory, go recursively into it
 		if fileInfo.IsDir() {
 			if maxDepth < 1 {
 				continue
 			}
-			subDir, subErr := scanDir(root, path, fileInfo.Name(), maxDepth-1)
+
+			subDir, subErr := scanDir(root, currentSubdirectoryPath, fileInfo.Name(), maxDepth-1)
+			
 			if subErr == nil {
-				info.SubDirs[subDir.Name] = subDir
+				directoryContainer.SubDirs[subDir.Name] = subDir
 			}
+		} else if dotstat.IsStatFile(fileInfo.Name()) {
+			pathToStatFile := absoluteSubdirectoryPath + "/" + fileInfo.Name()
+			pathToNonStatFile := dotstat.RemoveDotStatSuffix(pathToStatFile)
+			// .stat files are registered for later examination
+			dotStatFiles[pathToNonStatFile] = pathToStatFile
+			log.Debugf("Adding .stat file %s for %s", pathToStatFile, pathToNonStatFile)
 		} else {
 			file := &fs.FileInfo{
-				Name:      fileInfo.Name(),
-				Path:      path,
-				Timestamp: fileInfo.ModTime(),
-				Size:      fileInfo.Size(),
+				Name:      	fileInfo.Name(),
+				Parent:     absoluteSubdirectoryPath,
+				BornAt: 	fileInfo.ModTime(),
+				ModifiedAt: fileInfo.ModTime(),
+				ArchivedAt: fileInfo.ModTime(),
+				Size:      	fileInfo.Size(),
 			}
 
-			info.Files = append(info.Files, file)
+			directoryContainer.Files = append(directoryContainer.Files, file)
 		}
 	}
-	return info, nil
+	
+	dotstat.ApplyDotStatValues(dotStatFiles, directoryContainer.Files)
+
+	return directoryContainer, nil
 }
 
 func (c *LocalClient) GetDiskNames() ([]string, error) {
@@ -72,7 +93,7 @@ func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadClo
 	if disk != c.Directory {
 		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", disk))
 	}
-	fileName := filepath.Join(disk, file.Path, file.Name)
+	fileName := filepath.Join(disk, file.Parent, file.Name)
 
 	bytes, err = os.Open(fileName)
 	if err != nil {
@@ -86,9 +107,19 @@ func (c *LocalClient) Delete(disk string, file *fs.FileInfo) error {
 	if disk != c.Directory {
 		return fmt.Errorf("disk %#q does not exist", disk)
 	}
-	filePath := filepath.Join(disk, file.Path, file.Name)
+	filePath := filepath.Join(disk, file.Parent, file.Name)
 
 	err := os.Remove(filePath)
+
+	// remove a belonging .stat file if it is existent
+	possibleDotStatFilePath := dotstat.ToDotStatPath(filePath)
+	dotStatExists, _ := fs.IsFilePathValid(possibleDotStatFilePath)
+
+	if dotStatExists {
+		// don't throw any errors
+		os.Remove(possibleDotStatFilePath)
+	}
+
 	return err
 }
 

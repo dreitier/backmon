@@ -231,8 +231,10 @@ func (list FileGroup) Purge(fileDef *backup.BackupFileDefinition, path string, d
 
 	excess := list[keep:]
 	log.Infof("Purging %d excess files matching %#q in %#q from disk %#q", len(excess), fileDef.Pattern, path, disk)
+
 	for _, file := range excess {
 		err := client.Delete(disk, file.File)
+
 		if err != nil {
 			list[keep] = file
 			keep++
@@ -294,32 +296,44 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 
 		for _, fileDef := range dirDef.Files {
 			lastRun := backup.FindPrevious(fileDef.Schedule, now)
-			disk.metrics.FileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
+			disk.metrics.UpdateFileLimits(dirDef.Alias, fileDef.Alias, fileDef.RetentionCount, fileDef.RetentionAge, lastRun)
 		}
 
 		currentGroups := make(map[string][]*fs.FileInfo, len(fileGroups))
+
 		for group, fileMatches := range fileGroups {
 			latest := make([]*fs.FileInfo, len(dirDef.Files))
+
 			for k, fileDef := range dirDef.Files {
 				matches := fileMatches[k]
 				sort.Sort(matches)
 				matches, young := matches.Purge(fileDef, group, disk.Name, client)
 
-				disk.metrics.FileCounts(dirDef.Alias, fileDef.Alias, group, len(matches), young)
+				disk.metrics.UpdateFileCounts(dirDef.Alias, fileDef.Alias, group, len(matches), young)
+
 				if len(matches) > 0 {
 					latest[k] = matches[0].File
-					disk.metrics.LatestFile(dirDef.Alias, fileDef.Alias, group, matches[0].File.Size, matches[0].Time)
+					
+					disk.metrics.UpdateLatestFile(
+						dirDef.Alias, 
+						fileDef.Alias, 
+						group, 
+						matches[0].File,
+						matches[0].Time)
 				}
 			}
+
 			currentGroups[group] = latest
 		}
 
 		pastGroups := disk.groups[iDir]
 		disk.groups[iDir] = currentGroups
+
 		for group := range pastGroups {
 			if _, exists := fileGroups[group]; exists {
 				continue
 			}
+
 			for _, fileDef := range dirDef.Files {
 				disk.metrics.DropFile(dirDef.Alias, fileDef.Alias, group)
 			}
@@ -341,18 +355,24 @@ func findMatchingDirs(
 		//TODO: collect variable values
 		matches := findMatchingFiles(dir, dirDef, vars)
 		group, exists := fileGroups[path]
+		
 		if !exists {
 			group = make([]FileGroup, len(dirDef.Files))
 			fileGroups[path] = group
 		}
+
 		for i := 0; i < len(group); i++ {
 			group[i] = append(group[i], matches[i]...)
 		}
+
 		return
 	}
+
 	pattern := dirDef.Filter.Layers[level]
+	
 	for _, subDir := range dir.SubDirs {
 		match := pattern.FindStringSubmatch(subDir.Name)
+
 		if match == nil {
 			continue
 		}
@@ -373,9 +393,11 @@ func logDir(level uint, dir string) {
 	str := strings.Builder{}
 	str.Grow(6 + 2*int(level) + len(dir))
 	str.WriteString("  > ")
+
 	for i := 0; i < int(level); i++ {
 		str.WriteString("./") //…
 	}
+
 	str.WriteString(dir)
 	log.Debug(str.String())
 }
@@ -388,17 +410,20 @@ func findMatchingFiles(
 	timestamp := timestampFromVars(dirDef.Filter.Variables, vars)
 	fileGroup := make([]FileGroup, len(dirDef.Files))
 	var matches FileGroup
+
 	for i, fileDef := range dirDef.Files {
 		matches = matches[:0]
 		log.Debugf("    ~ %s", fileDef.Alias)
 		matches = collectMatchingFiles(dir.Files, fileDef, vars, &timestamp, matches)
 		fileGroup[i] = append(fileGroup[i], matches...)
 	}
+
 	return fileGroup
 }
 
 func timestampFromVars(varDefs []backup.VariableDefinition, varVals []string) backup.Timestamp {
 	timestamp := backup.Timestamp{}
+
 	//Iterate over the variables in reverse order so that earlier
 	// occurrences of a time substitution override later ones
 	for i := len(varDefs) - 1; i >= 0; i-- {
@@ -406,6 +431,7 @@ func timestampFromVars(varDefs []backup.VariableDefinition, varVals []string) ba
 			varDefs[i].Parser(varVals[i], &timestamp)
 		}
 	}
+
 	return timestamp
 }
 
@@ -415,8 +441,10 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 	}
 
 	str := strings.Builder{}
+
 	for i, v := range varDefs {
 		str.WriteString(template[i])
+
 		if v.Fuse {
 			if v.Name[0] == backup.SubstitutionMarker {
 				str.WriteString(v.Name)
@@ -429,7 +457,9 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 			str.WriteString(vars[i])
 		}
 	}
+
 	str.WriteString(template[len(template)-1])
+
 	return str.String()
 }
 
@@ -448,21 +478,27 @@ func collectMatchingFiles(
 
 		timestamp := *folderTime
 		matchingVars := true
+
 		for k, capture := range match {
 			varMap := fileDef.VariableMapping[k]
+
 			if varMap.Offset == 0 {
 				//CaptureGroup refers to an internal variable
 				if varMap.Parser != nil {
 					varMap.Parser(capture, &timestamp)
 				}
+
 				continue
 			}
+
 			//CaptureGroup refers to a user-defined variable
 			value := vars[varMap.Offset-1]
+
 			if varMap.Conversion != nil {
 				//Apply conversion function to variable value
 				value = varMap.Conversion(value)
 			}
+
 			if capture != value {
 				matchingVars = false
 				break
@@ -471,26 +507,31 @@ func collectMatchingFiles(
 
 		if matchingVars {
 			//TODO: use the timing method that was selected in the definitions file
-			fileTime := timestamp.TimeWithDefaults(file.Timestamp)
+			fileTime := timestamp.TimeWithDefaults(file.ModifiedAt)
 			//[:19] chops off timezone information, which is always ' +0000 UTC'
-			log.Debugf("      - %s @ %s", file.Name, fileTime.String()[:19])
+			log.Debugf("      - %s @ %s @ %s", file.Name, fileTime.String()[:19], file.ModifiedAt.String()[:19])
 			matches = append(matches, TemporalFile{fileTime, file})
 		}
 	}
+
 	return matches
 }
 
 func GetDisks() []*DiskData {
 	total := 0
+
 	for _, client := range clients {
 		total += len(client.Disks)
 	}
+
 	disks := make([]*DiskData, 0, total)
+
 	for _, client := range clients {
 		for _, disk := range client.Disks {
 			disks = append(disks, disk)
 		}
 	}
+
 	return disks
 }
 
@@ -503,12 +544,15 @@ func GetFilenames(
 	if groups == nil {
 		return nil
 	}
+
 	results := make([]string, 0, len(groups))
+
 	for groupName, files := range groups {
 		if files[file] != nil {
 			results = append(results, groupName)
 		}
 	}
+
 	return results
 }
 
@@ -519,18 +563,23 @@ func Download(
 	groupName string,
 ) (bytes io.ReadCloser, err error) {
 	groups, file := findGroups(diskName, directoryName, fileName)
+	
 	if groups == nil {
 		return nil, errors.New("the requested file does not exist")
 	}
+
 	var client *clientData
+
 	for _, client = range clients {
 		if _, found := client.Disks[diskName]; found {
 			break
 		}
 	}
+
 	if client == nil {
 		return nil, errors.New("the requested file does not exist")
 	}
+
 	return client.Client.Download(diskName, groups[groupName][file])
 }
 
@@ -540,26 +589,32 @@ func findGroups(
 	fileName string,
 ) (map[string][]*fs.FileInfo, int) {
 	disk := FindDisk(diskName)
+
 	if disk == nil {
 		return nil, 0
 	}
 
 	var dirI int
+
 	for dirI = 0; dirI < len(disk.Definition); dirI++ {
 		if disk.Definition[dirI].Alias == directoryName {
 			break
 		}
 	}
+
 	if dirI >= len(disk.Definition) {
 		return nil, 0
 	}
+
 	dir := disk.Definition[dirI]
 	var fileI int
+
 	for fileI = 0; fileI < len(dir.Files); fileI++ {
 		if dir.Files[fileI].Alias == fileName {
 			return disk.groups[dirI], fileI
 		}
 	}
+
 	return nil, 0
 }
 
@@ -569,6 +624,7 @@ func FindDisk(diskName string) *DiskData {
 			return disk
 		}
 	}
+
 	return nil
 }
 
@@ -577,30 +633,16 @@ func FindDirectory(
 	directoryName string,
 ) *backup.Directory {
 	disk := FindDisk(diskName)
+
 	if disk == nil {
 		return nil
 	}
+
 	for _, dir := range disk.Definition {
 		if dir.Alias == directoryName {
 			return dir
 		}
 	}
-	return nil
-}
 
-func FindFile(
-	diskName string,
-	directoryName string,
-	fileName string,
-) *backup.BackupFileDefinition {
-	dir := FindDirectory(diskName, directoryName)
-	if dir == nil {
-		return nil
-	}
-	for _, file := range dir.Files {
-		if file.Alias == fileName {
-			return file
-		}
-	}
 	return nil
 }

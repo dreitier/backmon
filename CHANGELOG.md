@@ -5,21 +5,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
 
-## 1.3.1 - 2022-07-12
+## [1.4.0] - 2022-07-19
+### Added
+- Support for `.stat` backup files to trace a backup file's born date, modification date and upload date.
+- New Prometheus exports for `.stat` metrics: `latest_file_born_at`, `latest_file_modified_at`, `latest_file_archived_at` and `latest_file_creation_duration`
+
+### Removed
+- Unused code for fetching files from S3
+- Duplicate type _File_ as it has also not been used
+
+## [1.3.1] - 2022-07-12
 ### Fixed
 - updated README.md to reflect the naming change from _ignore_buckets_ to _ignore_disks_
 - don't try to list items in ignored disks to avoid errors
 
-## 1.3.0 - 2022-07-05
+## [1.3.0] - 2022-07-05
 ### Added
 - Version (Git tag) and Git commit is shown during startup
 
-## 1.2.1 - 2022-06-29
+## [1.2.1] - 2022-06-29
 ### Added
 - `http.basic_auth` can now be used, see [configuration overview](https://dreitier.github.io/cloudmon-docs/reference/cloudmon-configuration/overview).
 
-## 1.2.0 - 2022-05-30
+## [1.2.0] - 2022-05-30
 ### Changed
 - Replaced `bucket` with `disk` to make a clear distinction between S3 *buckets* and *cloudmon* *disks*
 

@@ -25,10 +25,11 @@ func NewClient(config *config.ClientConfiguration) Client {
 			ForcePathStyle: config.ForcePathStyle,
 			Token:          config.Token,
 		}
-	} else {
-		return &provider.LocalClient{
-			EnvName:   config.EnvName,
-			Directory: config.Directory,
-		}
+	}
+
+	// fall back to local client
+	return &provider.LocalClient{
+		EnvName:   config.EnvName,
+		Directory: config.Directory,
 	}
 }

@@ -59,40 +59,6 @@ func getClient(c *S3Client) (*s3.S3, error) {
 	return c.s3Client, nil
 }
 
-func (c *S3Client) List(diskName *string) (files []*storage.File, err error) {
-	svc, err := getClient(c)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
-	}
-
-	// get items from the diskName
-	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: diskName})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get objects in diskName: %s", err)
-	}
-
-	log.Infof("Retrieved %d items from disk %s", len(result.Contents), *diskName)
-
-	// convert results to type File and append to list
-	files = appendToFileList(files, result.Contents)
-
-	// if the diskName held more than $maxKeys items, fetch them until we got them all
-	for *result.IsTruncated {
-		result, err = svc.ListObjects(&s3.ListObjectsInput{Bucket: diskName, Marker: result.NextMarker})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get objects in diskName: %s", err)
-		}
-
-		log.Debugf("Retrieved %d items from disk %s", len(result.Contents), *diskName)
-
-		files = appendToFileList(files, result.Contents)
-	}
-
-	return files, nil
-}
-
 func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*storage.DirectoryInfo, error) {
 	svc, err := getClient(c)
 	if err != nil {
@@ -249,12 +215,4 @@ func (c *S3Client) Delete(disk string, file *storage.FileInfo) error {
 	}
 
 	return nil
-}
-
-func appendToFileList(files []*storage.File, output []*s3.Object) []*storage.File {
-	for _, item := range output {
-		files = append(files, &storage.File{Name: item.Key, Timestamp: item.LastModified, Size: item.Size})
-	}
-
-	return files
 }

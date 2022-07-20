@@ -63,7 +63,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 			alias = rawDir.Alias
 			var legal bool
 			safeAlias, legal = MakeLegalAlias(alias)
-			
+
 			if !legal {
 				log.Warnf("The directory alias '%s' contained non-url characters, its name will be '%s' in urls", rawDir.Alias, safeAlias)
 			}
@@ -93,16 +93,19 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 	for _, fuseVar := range fuseVars {
 		match := false
+
 		for i := 0; i < len(variables); i++ {
 			if variables[i].Name == fuseVar {
 				variables[i].Fuse = true
 				match = true
 			}
 		}
+
 		if !match {
 			return errors.New(fmt.Sprintf("cannot fuse values of undefined variable '%s'", fuseVar))
 		}
 	}
+
 	return nil
 }
 
@@ -148,9 +151,9 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 		if _, exists := aliases[alias]; exists {
 			log.Errorf("Cannot have multiple file definitions with the alias: '%s'", alias)
 			continue
-		} else {
-			aliases[alias] = empty{}
 		}
+
+		aliases[alias] = empty{}
 
 		file := &BackupFileDefinition{
 			Pattern:         rawPattern,
@@ -174,21 +177,27 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 func parseVariables(pattern *regexp.Regexp, variableOffsets map[string]uint) ([]VariableReference, error) {
 	subexpNames := pattern.SubexpNames()
 	variables := make([]VariableReference, len(subexpNames))
+
 	for i, capture := range subexpNames {
 		op := ""
+
 		if !strings.HasPrefix(capture, "_") {
 			split := strings.Index(capture, "_")
+
 			if split == -1 {
 				variables[i] = VariableReference{
 					Parser: parseTimestampExtraction(capture),
 				}
+
 				continue
 			}
+
 			op = capture[:split]
 			capture = capture[split+1:]
 		}
 
 		offset, exists := variableOffsets[capture]
+
 		if !exists {
 			return nil, fmt.Errorf("use of undefined variable '%s'", capture[:])
 		}
@@ -198,6 +207,7 @@ func parseVariables(pattern *regexp.Regexp, variableOffsets map[string]uint) ([]
 			Conversion: parseVariableOperation(op),
 		}
 	}
+
 	return variables, nil
 }
 
@@ -270,6 +280,7 @@ func retentionOrDefault(file *RawFile) (uint64, time.Duration) {
 	}
 
 	log.Warn("Purge is enabled, but no retention is specified; defaulting to 'count: 3' and 'age: 7d'")
+
 	return 3, config.Week
 }
 
@@ -319,10 +330,12 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 	expr := strings.Builder{}
 
 	expr.WriteString("^")
+
 	for i, literal := range leftovers {
 		segment := literal
 		varCount := len(variableDefinitions)
 		slash := strings.Index(segment, "/")
+
 		for ; slash >= 0; slash = strings.Index(segment, "/") {
 			vars := ExpandSubstitutionsInto(regexp.QuoteMeta(segment[:slash]), &expr)
 			variableDefinitions = append(variableDefinitions, vars...)
@@ -353,6 +366,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 			expr.WriteString(`>` + variableValueSyntax + `)`)
 		}
 	}
+
 	expr.WriteString("$")
 	filters = append(filters, regexp.MustCompile(expr.String()))
 
@@ -362,6 +376,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 		Layers:    filters,
 		Variables: variableDefinitions,
 	}
+
 	return filter, variableOffsets
 }
 
@@ -388,22 +403,27 @@ func splitPattern(pattern string) (captures []string, leftovers []string) {
 
 func appendToTemplate(template []string, fragment string, substitutions []VariableDefinition) []string {
 	offset := 0
+
 	for _, sub := range substitutions {
 		offset = strings.Index(fragment, sub.Name)
 		template = append(template, fragment[:offset])
 		fragment = fragment[offset+len(sub.Name):]
 	}
+
 	template = append(template, fragment)
+
 	return template
 }
 
 func ExpandSubstitutions(input string) (expanded string, captures []VariableDefinition) {
 	var i int
+
 	for i = 0; i < len(input); i++ {
 		if input[i] == SubstitutionMarker {
 			break
 		}
 	}
+
 	i++
 
 	if i >= len(input) {
@@ -413,12 +433,14 @@ func ExpandSubstitutions(input string) (expanded string, captures []VariableDefi
 
 	text := strings.Builder{}
 	captures = ExpandSubstitutionsInto(input, &text)
+
 	return text.String(), captures
 }
 
 func ExpandSubstitutionsInto(input string, text *strings.Builder) (captures []VariableDefinition) {
 	text.Grow(len(input))
 	substitute := false
+
 	for i := 0; i < len(input); i++ {
 		if substitute {
 			substitute = false
@@ -436,10 +458,12 @@ func ExpandSubstitutionsInto(input string, text *strings.Builder) (captures []Va
 			text.WriteByte(input[i])
 		}
 	}
+
 	if substitute {
 		//The last character was a single '%'
 		text.WriteByte(SubstitutionMarker)
 	}
+
 	return captures
 }
 
@@ -531,18 +555,24 @@ func (filter *DirectoryFilter) MarshalJSON() ([]byte, error) {
 	text := bytes.Buffer{}
 	text.WriteByte('[')
 	first := true
+
 	for _, v := range filter.Variables {
-		if !v.Fuse {
-			if first {
-				first = false
-			} else {
-				text.WriteByte(',')
-			}
-			data, _ := json.Marshal(v.Name)
-			text.Write(data)
+		if v.Fuse {
+			continue
 		}
+
+		if first {
+			first = false
+		} else {
+			text.WriteByte(',')
+		}
+
+		data, _ := json.Marshal(v.Name)
+		text.Write(data)
 	}
+
 	text.WriteByte(']')
+	
 	return text.Bytes(), nil
 }
 

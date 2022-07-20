@@ -1,5 +1,5 @@
 './backups':
-  alias: postgres
+  alias: my-backups
   fuse:
   files:
     'dump-%Y%M%D.sql':

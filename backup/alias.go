@@ -9,7 +9,7 @@ func LegalAlias(alias string) bool {
 		return false
 	}
 	for b := range alias {
-		if !legalInUrl(byte(b)) {
+		if !isLegalInUrl(byte(b)) {
 			return false
 		}
 	}
@@ -17,36 +17,43 @@ func LegalAlias(alias string) bool {
 }
 
 func MakeLegalAlias(text string) (string, bool) {
-	//return url.PathEscape(text)
 	if len(text) == 0 {
 		return "%00", false
 	}
+
 	var i int
+
 	for i = 0; i < len(text); i++ {
-		if !legalInUrl(text[i]){
+		if !isLegalInUrl(text[i]){
 			break
 		}
 	}
+
 	if i >= len(text) {
 		//No illegal characters
 		return text, true
 	}
+	
 	escaped := strings.Builder{}
 	escaped.WriteString(text[:i])
 	legal := true
+	
 	for ; i < len(text); i++ {
-		if legalInUrl(text[i]){
+		if isLegalInUrl(text[i]){
 			escaped.WriteByte(text[i])
-		} else {
-			if text[i] != ' ' {
-				legal = false
-			}
-			escaped.WriteByte('%')
-			hi, lo := toHex(text[i])
-			escaped.WriteByte(hi)
-			escaped.WriteByte(lo)
+			continue
 		}
+		
+		if text[i] != ' ' {
+			legal = false
+		}
+		
+		escaped.WriteByte('%')
+		hi, lo := toHex(text[i])
+		escaped.WriteByte(hi)
+		escaped.WriteByte(lo)
 	}
+
 	return escaped.String(), legal
 }
 
@@ -66,10 +73,11 @@ func toHex(in byte) (hi byte, lo byte) {
 	return hi, lo
 }
 
-func legalInUrl(char byte) bool {
+func isLegalInUrl(char byte) bool {
 	if char < '!' || 'z' < char {
 		return false
 	}
+
 	switch char {
 	case
 		'"',
@@ -91,5 +99,6 @@ func legalInUrl(char byte) bool {
 		'`':
 		return false
 	}
+
 	return true
 }

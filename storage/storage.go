@@ -200,6 +200,7 @@ type TemporalFile struct {
 type FileGroup []TemporalFile
 type FileLookup map[string][]FileGroup
 
+// BEGIN The following Methods for FileGroup have to be implemented for sort.Interface
 // Len is the number of elements in the collection.
 func (list FileGroup) Len() int {
 	return len(list)
@@ -215,6 +216,7 @@ func (list FileGroup) Less(i int, j int) bool {
 func (list FileGroup) Swap(i int, j int) {
 	list[i], list[j] = list[j], list[i]
 }
+// END
 
 func (list FileGroup) Purge(fileDef *backup.BackupFileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
 	threshold := time.Now().UTC().Add(-fileDef.RetentionAge)
@@ -314,6 +316,8 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 				if len(matches) > 0 {
 					latest[k] = matches[0].File
 					
+					log.Debugf("      > %s < selected as latest/newest file based upon sorting algorithm", matches[0].File.Name)
+
 					disk.metrics.UpdateLatestFile(
 						dirDef.Alias, 
 						fileDef.Alias, 
@@ -506,11 +510,53 @@ func collectMatchingFiles(
 		}
 
 		if matchingVars {
-			//TODO: use the timing method that was selected in the definitions file
-			fileTime := timestamp.TimeWithDefaults(file.ModifiedAt)
-			//[:19] chops off timezone information, which is always ' +0000 UTC'
-			log.Debugf("      - %s @ %s @ %s", file.Name, fileTime.String()[:19], file.ModifiedAt.String()[:19])
-			matches = append(matches, TemporalFile{fileTime, file})
+			var sortByTime *time.Time
+			var useDefaultsFromTime *time.Time
+
+			// first of, we have to identify which file attribute to use as a baseline for interpolated timestamps
+			switch (fileDef.SortBy) {
+			case backup.SORT_BY_BORN_AT:
+				useDefaultsFromTime = &file.BornAt
+				break
+			case backup.SORT_BY_ARCHIVED_AT:
+				useDefaultsFromTime = &file.ArchivedAt
+				break
+			// default includes "interpolation": we can't reference an interpolation time as default because it's not assigned yet
+			default:
+				useDefaultsFromTime = &file.ModifiedAt
+			}
+
+			// keep the interpolated timestamp in its own variable to make go happy
+			interpolatedTimestamp := timestamp.TimeWithDefaults(*useDefaultsFromTime)
+
+			// set the file's interpolated timestamp
+			file.InterpolatedTimestamp = &interpolatedTimestamp
+
+			switch (fileDef.SortBy) {
+			case backup.SORT_BY_BORN_AT:
+				sortByTime = &file.BornAt
+				break
+			case backup.SORT_BY_MODIFIED_AT:
+				sortByTime = &file.ModifiedAt
+				break
+			case backup.SORT_BY_ARCHIVED_AT:
+				sortByTime = &file.ArchivedAt
+				break
+			// by default we are using the interpolated timestamp
+			default:
+				sortByTime = file.InterpolatedTimestamp
+			}
+
+			// [:19] chops off timezone information, which is always ' +0000 UTC'
+			log.Debugf("      - %s @ %s | born:%s | mod:%s | arch:%s | interpolated:%s", 
+				file.Name, 
+				sortByTime.String()[:19], 
+				file.BornAt.String()[:19],
+				file.ModifiedAt.String()[:19],
+				file.ArchivedAt.String()[:19],
+				file.InterpolatedTimestamp.String()[:19])
+			
+			matches = append(matches, TemporalFile{*sortByTime, file})
 		}
 	}
 

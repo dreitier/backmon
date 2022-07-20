@@ -21,6 +21,13 @@ const (
 	SubstitutionMarker = '%'
 )
 
+const (
+	SORT_BY_INTERPOLATION = iota
+	SORT_BY_BORN_AT = iota
+	SORT_BY_MODIFIED_AT = iota
+	SORT_BY_ARCHIVED_AT = iota
+)
+
 //noinspection RegExpRedundantEscape
 var (
 	variableDefExp    = regexp.MustCompile(`\\\{\\\{(?P<var>\w+)\\\}\\\}`)
@@ -30,27 +37,33 @@ var (
 
 func ParseDefinition(definitionsReader io.Reader) (Definition, error) {
 	raw, err := ParseRawDefinitions(definitionsReader)
+
 	if err != nil {
 		return nil, err
 	}
+	
 	return parseDirectories(raw)
 }
 
 func parseDirectories(raw RawDefinition) ([]*Directory, error) {
-	directories := make([]*Directory, 0, len(raw))
+	r := make([]*Directory, 0, len(raw))
 	aliases := make(map[string]empty)
+
 	for rawPattern, rawDir := range raw {
 		filter, variableOffsets := ParsePathPattern(rawPattern)
+
 		if err := applyFusion(filter.Variables, rawDir.FuseVars); err != nil {
 			return nil, err
 		}
 
 		var alias string
 		var safeAlias string
+		
 		if rawDir.Alias != "" {
 			alias = rawDir.Alias
 			var legal bool
 			safeAlias, legal = MakeLegalAlias(alias)
+			
 			if !legal {
 				log.Warnf("The directory alias '%s' contained non-url characters, its name will be '%s' in urls", rawDir.Alias, safeAlias)
 			}
@@ -58,6 +71,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 			alias = rawPattern
 			safeAlias, _ = MakeLegalAlias(alias)
 		}
+
 		if _, exists := aliases[alias]; exists {
 			return nil, errors.New(fmt.Sprintf(
 				"Cannot have multiple directory definitions with the alias: '%s'", alias))
@@ -65,7 +79,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 			aliases[alias] = empty{}
 		}
 
-		directories = append(directories, &Directory{
+		r = append(r, &Directory{
 			Alias:     alias,
 			SafeAlias: safeAlias,
 			Filter:    filter,
@@ -73,7 +87,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 		})
 	}
 
-	return directories, nil
+	return r, nil
 }
 
 func applyFusion(variables []VariableDefinition, fuseVars []string) error {
@@ -98,12 +112,14 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 	
 	for rawPattern, rawFile := range raw {
 		pattern, err := ParseFilePattern(rawPattern)
+
 		if err != nil {
 			log.Errorf("Could not parse File pattern '%s': %v.", rawPattern, err)
 			continue
 		}
 
 		variables, err := parseVariables(pattern, variableOffsets)
+
 		if err != nil {
 			log.Errorf("Could not parse File pattern '%s': %v.", rawPattern, err)
 			continue
@@ -111,12 +127,16 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 
 		retentionCount, retentionAge := retentionOrDefault(rawFile)
 
+		sortBy := parseSortBy(rawFile.Sort)
+
 		var alias string
 		var safeAlias string
+
 		if rawFile.Alias != "" {
 			alias = rawFile.Alias
 			var legal bool
 			safeAlias, legal = MakeLegalAlias(alias)
+
 			if !legal {
 				log.Warnf("The file alias '%s' contained non-url characters, its name will be '%s' in urls", rawFile.Alias, safeAlias)
 			}
@@ -124,6 +144,7 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 			alias = rawPattern
 			safeAlias, _ = MakeLegalAlias(alias)
 		}
+
 		if _, exists := aliases[alias]; exists {
 			log.Errorf("Cannot have multiple file definitions with the alias: '%s'", alias)
 			continue
@@ -138,11 +159,12 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 			Alias:           alias,
 			SafeAlias:       safeAlias,
 			Schedule:        rawFile.Schedule,
-			//SortBy ,
-			Purge:          rawFile.Purge,
-			RetentionCount: retentionCount,
-			RetentionAge:   retentionAge,
+			SortBy:	         sortBy,
+			Purge:           rawFile.Purge,
+			RetentionCount:  retentionCount,
+			RetentionAge:    retentionAge,
 		}
+
 		files = append(files, file)
 	}
 
@@ -177,6 +199,24 @@ func parseVariables(pattern *regexp.Regexp, variableOffsets map[string]uint) ([]
 		}
 	}
 	return variables, nil
+}
+
+func parseSortBy(op string) int {
+	switch op {
+	case "born_at":
+		return SORT_BY_BORN_AT
+	case "modified_at":
+		return SORT_BY_MODIFIED_AT
+	case "archived_at":
+		return SORT_BY_ARCHIVED_AT
+	case "interpolation":
+		return SORT_BY_INTERPOLATION
+	case "":
+		return SORT_BY_INTERPOLATION
+	default: 
+		log.Warnf("Unknown 'sort' parameter '%s', defaulting to 'interpolation'", op)
+		return SORT_BY_INTERPOLATION
+	}
 }
 
 func parseVariableOperation(op string) func(string) string {
@@ -251,6 +291,7 @@ func ParseDirectoryPattern(pattern string) (*regexp.Regexp, error) {
 
 func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string]uint) {
 	normalized := strings.Trim(pattern, `/`)
+
 	if len(normalized) == 0 || normalized == "." {
 		// The pattern refers to the disk root
 		normalized = "."
@@ -260,12 +301,14 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 			Layers:    nil,
 			Variables: nil,
 		}
+
 		return filter, nil
 	}
 
 	if strings.HasPrefix(normalized, "./") {
 		normalized = normalized[len("./"):]
 	}
+
 	captures, leftovers := splitPattern(normalized)
 
 	variableOffsets = make(map[string]uint)
@@ -331,12 +374,15 @@ func splitPattern(pattern string) (captures []string, leftovers []string) {
 	captures = make([]string, len(matches))
 	leftovers = make([]string, len(matches)+1)
 	last := 0
+
 	for i, match := range matches {
 		leftovers[i] = pattern[last:match[0]]
 		last = match[1]
 		captures[i] = pattern[match[2]:match[3]]
 	}
+
 	leftovers[len(matches)] = pattern[last:]
+
 	return captures, leftovers
 }
 
@@ -513,7 +559,7 @@ type BackupFileDefinition struct {
 	Alias           string
 	SafeAlias       string
 	Schedule        *cronexpr.Expression
-	SortBy          uint32
+	SortBy          int
 	Purge           bool
 	RetentionCount  uint64
 	RetentionAge    time.Duration

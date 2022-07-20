@@ -28,6 +28,8 @@ type FileInfo struct {
 	ModifiedAt	time.Time
 	// When has the file been copied to long-time archival? In a local storage, this would be probably the same as ModifiedAt
 	ArchivedAt	time.Time
+	// An optional timestamp based upon the file's path substitution variables
+	InterpolatedTimestamp *time.Time
 }
 
 func IsFilePathValid(path string) (bool, error) {

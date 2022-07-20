@@ -51,7 +51,8 @@ Feel free to provide a pull request.
 
 ## TOOD
 
-- `default.sort` and `files[].sort` has no effect at the moment
+- Instead of using `ignore_disks` a whitelisting _and_ blacklisting should be possible
+- Support for Azure Blobs
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

@@ -37,17 +37,21 @@ type RawFile struct {
 
 func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
 	cfg, err := config.Parse(definitionsReader)
+	
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse definitions file: %v", err)
 	}
 
 	parsed := make(RawDefinition)
+	
 	for dirName := range cfg {
 		dirConfig := cfg.Sub(dirName)
 		dir, err := parseDirectorySection(dirConfig, dirName)
+
 		if err != nil {
 			return nil, err
 		}
+		
 		parsed[dirName] = dir
 	}
 
@@ -64,20 +68,24 @@ func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {
 
 	files := make(map[string]*RawFile)
 	fileConfigs := cfg.Sub("files")
+
 	if fileConfigs == nil {
 		log.Warnf("directory %s does not contain any files", name)
 	} else {
 		for fileName := range fileConfigs {
 			fileConfig := fileConfigs.Sub(fileName)
 			file, err := parseFileSection(fileConfig, defaults)
+
 			if err != nil {
 				return nil, err
 			}
+			
 			files[fileName] = file
 		}
 	}
 
 	var alias = name
+
 	if cfg.Has(paramAlias) {
 		alias = cfg.String(paramAlias)
 	}
@@ -105,9 +113,11 @@ func parseFileSection(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
 
 	if cfg.Has("schedule") {
 		schedule, err := cronexpr.Parse(cfg.String("schedule"))
+
 		if err != nil {
 			return nil, nil
 		}
+		
 		file.Schedule = schedule
 	}
 
@@ -136,6 +146,7 @@ func parseDefaults(cfg config.Raw) (*Defaults, error) {
 	}
 
 	schedule, err := cronexpr.Parse(cfg.String("schedule"))
+
 	if err != nil {
 		return nil, nil
 	}

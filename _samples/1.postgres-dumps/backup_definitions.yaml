@@ -5,3 +5,4 @@
     'dump-%Y%M%D.sql':
       alias: pgdump
       schedule: 0 1 * * *
+      sort: interpolation

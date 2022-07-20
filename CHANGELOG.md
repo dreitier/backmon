@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Files can now be sorted by `born_at`, `modified_at`, `archived_at` and `interpolation`. Configuration parameters `defaults.sort` and `files.*.sort` are  activated.
 
 ## [1.4.0] - 2022-07-19
 ### Added

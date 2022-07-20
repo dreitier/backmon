@@ -449,17 +449,19 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 	for i, v := range varDefs {
 		str.WriteString(template[i])
 
-		if v.Fuse {
-			if v.Name[0] == backup.SubstitutionMarker {
-				str.WriteString(v.Name)
-			} else {
-				str.WriteString("{{")
-				str.WriteString(v.Name)
-				str.WriteString("}}")
-			}
-		} else {
+		if !v.Fuse {
 			str.WriteString(vars[i])
+			continue
 		}
+
+		if v.Name[0] == backup.SubstitutionMarker {
+			str.WriteString(v.Name)
+			continue
+		}
+			
+		str.WriteString("{{")
+		str.WriteString(v.Name)
+		str.WriteString("}}")
 	}
 
 	str.WriteString(template[len(template)-1])

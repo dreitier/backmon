@@ -31,6 +31,7 @@ const (
 //noinspection RegExpRedundantEscape
 var (
 	variableDefExp    = regexp.MustCompile(`\\\{\\\{(?P<var>\w+)\\\}\\\}`)
+	// regular expression to match variable names like `{{myvariable}}`
 	variableDefExpRaw = regexp.MustCompile(`\{\{(?P<var>\w+)\}\}`)
 	variableExp       = regexp.MustCompile(`\\\$\\\{(?P<var>\w+)(?:\:(?P<op>[a-zA-Z]*))?\\\}`)
 )
@@ -49,8 +50,9 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 	r := make([]*Directory, 0, len(raw))
 	aliases := make(map[string]empty)
 
-	for rawPattern, rawDir := range raw {
-		filter, variableOffsets := ParsePathPattern(rawPattern)
+	for directoryPathPattern, rawDir := range raw {
+		// find placeholders
+		filter, variableOffsets := ParsePathPattern(directoryPathPattern)
 
 		if err := applyFusion(filter.Variables, rawDir.FuseVars); err != nil {
 			return nil, err
@@ -68,7 +70,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 				log.Warnf("The directory alias '%s' contained non-url characters, its name will be '%s' in urls", rawDir.Alias, safeAlias)
 			}
 		} else {
-			alias = rawPattern
+			alias = directoryPathPattern
 			safeAlias, _ = MakeLegalAlias(alias)
 		}
 
@@ -90,6 +92,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 	return r, nil
 }
 
+// Sets the fusion for a variable. Please note each VariableDefinition[].Name *must* have a fusion assigned
 func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 	for _, fuseVar := range fuseVars {
 		match := false
@@ -300,7 +303,8 @@ func ParseDirectoryPattern(pattern string) (*regexp.Regexp, error) {
 	return regexp.Compile(expression)
 }
 
-func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string]uint) {
+// based upon the given path pattern, a directory filter is created. That DirectoryFilter contains the required regular expressions for each detected variable (like {{myvar}})
+func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string /* name of variable, like 'myvar' }}*/]uint /* index in filter.Variables, beginning with 1 */) {
 	normalized := strings.Trim(pattern, `/`)
 
 	if len(normalized) == 0 || normalized == "." {
@@ -320,6 +324,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 		normalized = normalized[len("./"):]
 	}
 
+	// normalized could be ['.', 'backup', 'backup/subdir1']
 	captures, leftovers := splitPattern(normalized)
 
 	variableOffsets = make(map[string]uint)
@@ -380,6 +385,9 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 	return filter, variableOffsets
 }
 
+// Based upon the given `pattern`, it finds each variable definition like 'subdir1/{{myvar}}'.
+// @return captures = ['myvar']
+// @return leftovers = ['subdir1/', '']
 func splitPattern(pattern string) (captures []string, leftovers []string) {
 	if pattern == "" {
 		return nil, nil
@@ -477,7 +485,7 @@ func writeSubstitutionInto(character byte, to *strings.Builder) (captureAdded bo
 		to.WriteString("(?P<year>[0-9]{4})")
 		parser = extractYear
 	case 'y':
-		to.WriteString("(?P<year>[0-9]{2})")
+		to.WriteString("(?P<year_short>[0-9]{2})")
 		parser = extractYear
 	case 'M':
 		to.WriteString("(?P<month>0[1-9]|1[0-2])")
@@ -572,7 +580,7 @@ func (filter *DirectoryFilter) MarshalJSON() ([]byte, error) {
 	}
 
 	text.WriteByte(']')
-	
+
 	return text.Bytes(), nil
 }
 

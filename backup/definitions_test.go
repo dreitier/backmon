@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"testing"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_parseDefinitions(t *testing.T) {
@@ -134,4 +136,77 @@ func Test_parseFilenamePattern(t *testing.T) {
 	if captures["lower_instance"] != "zerg"{
 		t.Error("Named capture group 'lower_instance' did not match the correct patten 'zerg'")
 	}
+}
+
+func TestSplitPattern_extractsToVariables(t *testing.T) {
+	assert := assert.New(t)
+
+	captures, leftovers := splitPattern("{{a}}/{{b}}")
+
+	assert.Equal("a", captures[0])
+	assert.Equal("b", captures[1])
+
+	assert.Equal("", leftovers[0])
+	assert.Equal("/", leftovers[1])
+	assert.Equal("", leftovers[2])
+}
+
+func TestSplitPattern_extractsVariableAndPathSegment(t *testing.T) {
+	assert := assert.New(t)
+
+	captures, leftovers := splitPattern("root/{{a}}")
+
+	assert.Equal("a", captures[0])
+	assert.Equal(1, len(captures))
+
+	assert.Equal(2, len(leftovers))
+	assert.Equal("root/", leftovers[0])
+	assert.Equal("", leftovers[1])
+}
+
+func TestParsePathPattern(t *testing.T) {
+	assert := assert.New(t)
+	filter, variableOffsets := ParsePathPattern("root/{{var1}}/subdir/{{var2}}")
+
+	spew.Dump(filter)
+	spew.Dump(variableOffsets)
+
+	assert.Equal(3, len(filter.Template))
+	assert.Equal("root/", filter.Template[0])
+	assert.Equal("/subdir/", filter.Template[1])
+
+	assert.Equal(4, len(filter.Layers))
+	assert.Equal("^root$", filter.Layers[0].String())
+	assert.Equal("^(?P<_var1>[^\\\\./]+?)$", filter.Layers[1].String())
+	assert.Equal("^subdir$", filter.Layers[2].String())
+	assert.Equal("^(?P<_var2>[^\\\\./]+?)$", filter.Layers[3].String())
+
+	assert.Equal(2, len(filter.Variables))
+	assert.Equal("var1", filter.Variables[0].Name)
+	assert.Equal(false, filter.Variables[0].Fuse)
+	assert.Equal("var2", filter.Variables[1].Name)
+	assert.Equal(false, filter.Variables[1].Fuse)
+
+	assert.Equal(2, len(variableOffsets))
+	assert.Equal(uint(1), variableOffsets["var1"])
+	assert.Equal(uint(2), variableOffsets["var2"])
+}
+
+func Test_applyFusion(t *testing.T) {
+	assert := assert.New(t)
+	filter, _ := ParsePathPattern("root/{{var1}}/subdir/{{var2}}/{{var4}}")
+
+	fuses := []string{"var1", "var2"}
+
+	assert.Equal(nil, applyFusion(filter.Variables, fuses))
+}
+
+func Test_applyFusion_returnsError_ifFuseReferencesAnUnknownVariable(t *testing.T) {
+	assert := assert.New(t)
+	filter, _ := ParsePathPattern("root/{{var1}}/subdir/{{var2}}/{{var4}}")
+
+	fuses := []string{"var1", "var2", "var3"}
+
+	// error
+	assert.NotNil(applyFusion(filter.Variables, fuses))
 }

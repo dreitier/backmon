@@ -6,6 +6,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_NewSingleDiskConfiguration_GH6_detectsRegex(t *testing.T) {
+	assert := assert.New(t)
+
+	sut, _ := NewSingleDiskConfiguration("/mystaticregex/")
+
+	assert.True(sut.IsRegularExpression)
+	assert.Equal("mystaticregex", sut.Name)
+}
+
+func Test_NewSingleDiskConfiguration_GH6_detectsRegexError(t *testing.T) {
+	assert := assert.New(t)
+
+	sut, err := NewSingleDiskConfiguration("/notendingregex(.*/")
+
+	assert.Nil(sut)
+	assert.NotNil(err)
+}
+
 func Test_GetDiskStatus_GH5_UC1_simpleExclude(t *testing.T) {
 	assert := assert.New(t)
 	raw, _ := ParseFromString(
@@ -105,4 +123,51 @@ all_others: exclude
 	status, appliedPolicy := GetDiskStatus("bucket-2", cfg)
 	assert.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
 	assert.Equal(DISKS_POLICY_CONFLICTING, appliedPolicy)
+}
+
+func Test_GetDiskStatus_GH6_UC1_excludedByRegex(t *testing.T) {
+	assert := assert.New(t)
+	raw, _ := ParseFromString(
+`
+exclude:
+- "/ab.*ef/"
+`)
+	cfg := ParseDisksSection(raw)
+
+	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
+
+	assert.Equal(DISKS_POLICY_EXCLUDE_BY_REGEX, appliedPolicy)
+	assert.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+}
+
+func Test_GetDiskStatus_GH6_UC1_includedByRegex(t *testing.T) {
+	assert := assert.New(t)
+	raw, _ := ParseFromString(
+`
+include:
+- "/ab.*ef/"
+`)
+	cfg := ParseDisksSection(raw)
+
+	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
+
+	assert.Equal(DISKS_POLICY_INCLUDE_BY_REGEX, appliedPolicy)
+	assert.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+}
+
+func Test_GetDiskStatus_GH6_UC1_whenRegExpsForInclude_AND_excludeMatches_itFallsBackToDefaultBehaviour(t *testing.T) {
+	assert := assert.New(t)
+	raw, _ := ParseFromString(
+`
+include:
+- "/ab.*ef/"
+exclude:
+- "/ab.*ef/"
+`)
+	cfg := ParseDisksSection(raw)
+
+	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
+
+	assert.Equal(DISKS_POLICY_CONFLICTING_BY_REGEX, appliedPolicy)
+	assert.Equal(DISKS_BEHAVIOUR_INCLUDE /* default behaviour */, status)
 }

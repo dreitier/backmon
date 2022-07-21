@@ -15,6 +15,7 @@ disks:
     - my-bucket-1
   exclude:
     - my-secret-bucket-2
+    - "/allbucketswith-.*-regex/"
   all_others: exclude
 
 environments:

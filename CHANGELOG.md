@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - BREAKING: Add support for fine grained include/exclude definitions AKA white/gray/blacklisting (#5). Please note that the old `ignore_disks:` section is no longer available. You have to move those configuration values into the `disks.exclude:` section
+- Disks can be included and excluded with regular expressions (#6) 
 - Files can now be sorted by `born_at`, `modified_at`, `archived_at` and `interpolation`. Configuration parameters `defaults.sort` and `files.*.sort` are  activated.
 
 ## [1.4.0] - 2022-07-19

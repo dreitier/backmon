@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 	"flag"
-	"strings"
 )
 
 type configuration struct {
@@ -170,19 +169,18 @@ func parseIncludeExcludeSection(rawDiskNames []string) (/*diskNames */ map[strin
 	var diskRegExps = []SingleDiskConfiguration{}
 
 	for _, diskName := range rawDiskNames {
-		// we are checking if the given diskName to include or exclude is a regular expression like "/.*/"
-		isRegEx := strings.HasPrefix(diskName, "/") && strings.HasSuffix(diskName, "/")
+		singleDiskConfiguration, err := NewSingleDiskConfiguration(diskName)
 
-		config := &SingleDiskConfiguration{
-			Name: diskName,
-			IsRegularExpression: isRegEx,
+		if err != nil {
+			log.Warnf("Ignoring disk '%s': %s", diskName, err)
+			continue
 		}
 
 		// put it in the correct bucket
-		if (isRegEx) {
-			diskRegExps = append(diskRegExps, *config)
+		if (singleDiskConfiguration.IsRegularExpression) {
+			diskRegExps = append(diskRegExps, *singleDiskConfiguration)
 		} else {
-			diskNames[diskName] = *config
+			diskNames[singleDiskConfiguration.Name] = *singleDiskConfiguration
 		}
 	}
 

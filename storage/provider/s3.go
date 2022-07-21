@@ -214,8 +214,8 @@ func (c *S3Client) findAvailableDisks() ([]*s3.Bucket, error) {
 	for _, disk := range result.Buckets {
 		// don't try to list items in ignored disks
 		diskName := *disk.Name
-		if config.GetInstance().Global().IgnoreDisk(diskName) {
-			log.Debugf("Not listing files in disk %s, because it's on the ignore list", diskName)
+		
+		if !config.GetInstance().Disks().IsDiskIncluded(diskName) {
 			continue
 		}
 		_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(diskName)})

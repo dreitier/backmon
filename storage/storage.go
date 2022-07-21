@@ -72,10 +72,10 @@ func (client *clientData) updateDiskInfo() error {
 
 	// add disks that are new on the client to the map
 	for _, diskName := range diskNames {
-		if config.GetInstance().Global().IgnoreDisk(diskName) {
-			log.Debugf("Not adding newly discovered disk %s, because it's on the ignore list", diskName)
+		if !config.GetInstance().Disks().IsDiskIncluded(diskName) {
 			continue
 		}
+
 		_, exists := client.Disks[diskName]
 
 		// ignore disks containing a file called '.cloudmonignore'

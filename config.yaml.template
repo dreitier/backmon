@@ -10,8 +10,12 @@ http:
 downloads: 
   enabled: false
 
-ignore_disks:
-  - 123456789000-mybucket
+disks:
+  include:
+    - my-bucket-1
+  exclude:
+    - my-secret-bucket-2
+  all_others: exclude
 
 environments:
   aws-test-environment:

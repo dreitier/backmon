@@ -9,7 +9,6 @@ type GlobalConfiguration struct {
 	logLevel       log.Level
 	httpPort       int
 	updateInterval time.Duration
-	ignored        map[string]struct{}
 }
 
 func (self *GlobalConfiguration) LogLevel() log.Level {
@@ -22,9 +21,4 @@ func (self *GlobalConfiguration) HttpPort() int {
 
 func (self *GlobalConfiguration) UpdateInterval() time.Duration {
 	return self.updateInterval
-}
-
-func (self *GlobalConfiguration) IgnoreDisk(disk string) bool {
-	_, ignored := self.ignored[disk]
-	return ignored
 }

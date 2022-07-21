@@ -9,12 +9,14 @@ import (
 	"sync"
 	"time"
 	"flag"
+	"strings"
 )
 
 type configuration struct {
 	global       *GlobalConfiguration
 	http         *HttpConfiguration
 	downloads    *DownloadsConfiguration
+	disks		 *DisksConfiguration
 	environments []*EnvironmentConfiguration
 }
 
@@ -74,6 +76,10 @@ func (c *configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
+func (c *configuration) Disks() *DisksConfiguration {
+	return c.disks
+}
+
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
@@ -112,6 +118,75 @@ func initConfig() {
 	instance.http = parseHttpSection(cfg.Sub("http"))
 	instance.downloads = parseDownloadsSection(cfg.Sub("downloads"))
 	instance.environments = parseEnvironmentsSection(cfg.Sub("environments"))
+	instance.disks = ParseDisksSection(cfg.Sub("disks"))
+}
+
+// Parses `disks:` section
+func ParseDisksSection(cfg Raw) *DisksConfiguration {
+	var r *DisksConfiguration
+
+	const paramInclude = "include"
+	const paramExclude = "exclude"
+	const paramAllOthers = "all_others"
+	// possible values for `all_others`
+	const paramAllOthersValueInclude = paramInclude
+	const paramAllOthersValueExclude = paramExclude
+
+	// #5:UC2: include is the default behaviour
+	allOthers := DISKS_BEHAVIOUR_INCLUDE
+
+	if (cfg.Has(paramAllOthers)) {
+		rawAllOthers := cfg.String(paramAllOthers)
+
+		switch (rawAllOthers) {
+		case paramAllOthersValueInclude:
+			allOthers = DISKS_BEHAVIOUR_INCLUDE
+			break
+		case paramAllOthersValueExclude:
+			allOthers = DISKS_BEHAVIOUR_EXCLUDE
+			break
+		default:
+			log.Warnf("Unknown value for %s. Using 'include' as default value", paramAllOthers)
+		}
+	}
+
+	includeDisks, includeRegExps := parseIncludeExcludeSection(cfg.StringSlice(paramInclude))
+	excludeDisks, excludeRegExps := parseIncludeExcludeSection(cfg.StringSlice(paramExclude))
+
+	r = &DisksConfiguration{
+		behaviourForAllOthers:	allOthers,
+		include:				includeDisks,
+		includeRegExps: 		includeRegExps,
+		exclude:				excludeDisks,
+		excludeRegExps:			excludeRegExps, 
+	}
+
+	return r
+}
+
+// Parses `disks.include` and `disks.exclude`
+func parseIncludeExcludeSection(rawDiskNames []string) (/*diskNames */ map[string]SingleDiskConfiguration, /* diskRegExps */ []SingleDiskConfiguration) {
+	var diskNames = make(map[string]SingleDiskConfiguration)
+	var diskRegExps = []SingleDiskConfiguration{}
+
+	for _, diskName := range rawDiskNames {
+		// we are checking if the given diskName to include or exclude is a regular expression like "/.*/"
+		isRegEx := strings.HasPrefix(diskName, "/") && strings.HasSuffix(diskName, "/")
+
+		config := &SingleDiskConfiguration{
+			Name: diskName,
+			IsRegularExpression: isRegEx,
+		}
+
+		// put it in the correct bucket
+		if (isRegEx) {
+			diskRegExps = append(diskRegExps, *config)
+		} else {
+			diskNames[diskName] = *config
+		}
+	}
+
+	return diskNames, diskRegExps
 }
 
 func parseHttpSection(cfg Raw) *HttpConfiguration {
@@ -200,19 +275,10 @@ func parseGlobalSection(cfg Raw) *GlobalConfiguration {
 		updateInterval = time.Hour
 	}
 
-	ignore := make(map[string]struct{})
-	if cfg.Has("ignore_disks") {
-		for _, disk := range cfg.StringSlice("ignore_disks") {
-			log.Debugf("Ignoring disk %s", disk)
-			ignore[disk] = struct{}{}
-		}
-	}
-
 	return &GlobalConfiguration{
 		logLevel: logLevel, 
 		httpPort: httpPort, 
-		updateInterval: updateInterval, 
-		ignored: ignore,
+		updateInterval: updateInterval,
 	}
 }
 

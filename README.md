@@ -1,13 +1,15 @@
-# cloudmon - Monitoring of backups in S3 buckets
-*cloudmon* monitors backup file inside an S3 or Minio bucket.
+# cloudmon - Monitoring of backup files in filesystems and object storages
+*cloudmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
 
 ## Description
 
-With *cloudmon* you can monitor and check recurring backup files, stored in an S3-compatible bucket. *cloudmon* exports the backup status of the files in a Prometheus-compatible format.
+With *cloudmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored either in a local filesystem or inside an S3-compatible object storage like AWS S3 or MinIO.
+
+You can easily integrate *cloudmon* into your Prometheus- and Grafana-based infrastructure for analysing the duration of creating backups or alerting if a backup fails some constraints.
 
 ## Getting started
 ### Documentation
-The official documentation is located at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
+You can find our official documentation at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
 
 ### Dependencies
 *cloudmon* requires Go 1.11 or later to make use of Go modules, see [https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51](https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51).
@@ -50,9 +52,8 @@ If you need professionally support, consulting or a dedicated feature, please ge
 Feel free to provide a pull request.
 
 ## TOOD
+Please take a look in our [issue tracker](https://github.com/dreitier/cloudmon/issues).
 
-- Instead of using `ignore_disks` a whitelisting _and_ blacklisting should be possible
-- Support for Azure Blobs
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

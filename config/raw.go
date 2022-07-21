@@ -36,6 +36,16 @@ var (
 
 type Raw map[string]interface{}
 
+// Provide a YAML string and unmarshal it
+func ParseFromString(content string) (Raw, error) {
+	var out map[string]interface{}
+	if err := yaml.Unmarshal([]byte(content), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+
+}
+
 func Parse(reader io.Reader) (Raw, error) {
 	var out map[string]interface{}
 	if err := yaml.NewDecoder(reader).Decode(&out); err != nil {

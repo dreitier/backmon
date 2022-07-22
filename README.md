@@ -14,6 +14,16 @@ You can find our official documentation at [https://dreitier.github.io/cloudmon-
 ### Dependencies
 *cloudmon* requires Go 1.11 or later to make use of Go modules, see [https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51](https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51).
 
+### Helm
+
+We provide a Helm chart for *cloudmon* which you can easily install:
+
+```
+helm repo add dreitier https://dreitier.github.io/helm-charts/
+helm repo update
+helm install dreitier/cloudmon
+```
+
 ### Local installation
 
 	$ mkdir -p ~/go/{src,bin}

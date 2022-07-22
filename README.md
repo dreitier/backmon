@@ -61,9 +61,8 @@ If you need professionally support, consulting or a dedicated feature, please ge
 ## Contribution
 Feel free to provide a pull request.
 
-## TOOD
+## TODO
 Please take a look in our [issue tracker](https://github.com/dreitier/cloudmon/issues).
-
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

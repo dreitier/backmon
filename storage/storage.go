@@ -24,7 +24,7 @@ var (
 	ignoreFile = &fs.FileInfo{Name: ".cloudmonignore"}
 )
 
-func init() {
+func InitializeConfiguration() {
 	envs := config.GetInstance().Environments()
 	for _, env := range envs {
 		clients[env.Name] = &clientData{

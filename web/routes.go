@@ -24,14 +24,12 @@ const DiskInfoRoute = "disk_info_route"
 const LatestFileRoute = "latest_file_route"
 const HttpMethodGet = "GET"
 
-func init () {
-	instance = &routeConfiguration{
-		endpointsRouter: mux.NewRouter().UseEncodedPath(),
-	}
-}
-
 func GetInstance() *routeConfiguration {
 	once.Do(func() {
+		instance = &routeConfiguration{
+			endpointsRouter: mux.NewRouter().UseEncodedPath(),
+		}
+
 		instance.endpointsRouter.StrictSlash(true)
 		instance.endpointsRouter.HandleFunc("/", BaseHandler)
 		instance.endpointsRouter.Handle("/metrics", metrics.Handler())

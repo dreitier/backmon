@@ -249,6 +249,12 @@ func parseDownloadsSection(cfg Raw) *DownloadsConfiguration {
 
 func parseGlobalSection(cfg Raw) *GlobalConfiguration {
 	logLevel := log.InfoLevel
+
+	// if debug log level has not been enabled, set log level to info
+	if hasGlobalDebugEnabled {
+		logLevel = log.DebugLevel
+	}
+
 	if cfg.Has("log_level") {
 		parsedLevel, err := log.ParseLevel(cfg.String("log_level"))
 		if err == nil {

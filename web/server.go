@@ -14,7 +14,6 @@ func StartServer() {
 
 	log.Infof("Starting webserver on %s", listenAddr)
 	
-
 	r := mux.NewRouter()
 	//r.HandleFunc("/{disk}", handler)
 

@@ -6,6 +6,9 @@ import (
 	"github.com/dreitier/cloudmon/web"
 	log "github.com/sirupsen/logrus"
 	"time"
+	"fmt"
+	"os"
+	termbox "github.com/nsf/termbox-go"
 )
 
 const app = "cloudmon"
@@ -22,6 +25,46 @@ func printVersion() {
 }
 
 func main() {
+	// #7: allow manual refreshing of disks
+	// set up termbox, @see https://github.com/nsf/termbox-go/blob/master/_demos/raw_input.go
+	err := termbox.Init()
+
+	if err != nil {
+		panic(err)
+	}
+
+	// fail-safe
+	defer termbox.Close()
+
+	// start goroutine to continuously poll the keyboard
+	go func() {
+		for {
+			var current string
+			var data [64]byte
+
+			// we have to poll the raw events; normal events don't include escape sequences
+			switch ev := termbox.PollRawEvent(data[:]); ev.Type {
+			case termbox.EventRaw:
+				d := data[:ev.N]
+				current = fmt.Sprintf("%q", d)
+
+				// handle disk refresh
+				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
+					log.Printf("Forcing reload...")
+					storage.UpdateDiskInfo()
+				}
+				// handlq exiting
+				else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
+					log.Printf("Exiting...")
+					termbox.Close()
+					os.Exit(0)
+				}
+			case termbox.EventError:
+				panic(ev.Err)
+			}
+		}
+	}()
+
 	printVersion()
 	
 	if !config.HasGlobalDebugEnabled() {
@@ -30,7 +73,9 @@ func main() {
 		log.SetLevel(logLevel)
 	}
 
+	storage.InitializeConfiguration()
 	scheduleDiskUpdates()
+
 	web.StartServer()
 }
 

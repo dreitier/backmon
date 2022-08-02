@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Log output will now show date and time
 
 ## [1.5.0] - 2022-08-02
 ### Added

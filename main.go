@@ -64,6 +64,7 @@ func main() {
 		}
 	}()
 
+	configureLogrus()
 	printVersion()
 	
 	if !config.HasGlobalDebugEnabled() {
@@ -76,6 +77,13 @@ func main() {
 	scheduleDiskUpdates()
 
 	web.StartServer()
+}
+
+func configureLogrus() {
+	customFormatter := new(log.TextFormatter)
+    customFormatter.TimestampFormat = "2022-08-02 20:22:05"
+    customFormatter.FullTimestamp = true
+	log.SetFormatter(customFormatter)
 }
 
 func scheduleDiskUpdates() {

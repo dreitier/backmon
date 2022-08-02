@@ -52,9 +52,8 @@ func main() {
 				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-				}
 				// handlq exiting
-				else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
+				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
 					log.Printf("Exiting...")
 					termbox.Close()
 					os.Exit(0)

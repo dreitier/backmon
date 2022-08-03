@@ -25,16 +25,34 @@ func printVersion() {
 }
 
 func main() {
+	configureLogrus()
+	configureTerminal()
+	printVersion()
+
+	if !config.HasGlobalDebugEnabled() {
+		logLevel := config.GetInstance().Global().LogLevel()
+		log.SetLevel(logLevel)
+	}
+
+	storage.InitializeConfiguration()
+	scheduleDiskUpdates()
+
+	web.StartServer()
+}
+
+func configureTerminal() {
+	if config.IsRunningInBackgroundForced() {
+		return
+	}
+
 	// #7: allow manual refreshing of disks
 	// set up termbox, @see https://github.com/nsf/termbox-go/blob/master/_demos/raw_input.go
 	err := termbox.Init()
 
 	if err != nil {
-		panic(err)
+		log.Warnf("Unable to run in interactive mode: %s", err)
+		return
 	}
-
-	// fail-safe
-	defer termbox.Close()
 
 	// start goroutine to continuously poll the keyboard
 	go func() {
@@ -63,20 +81,6 @@ func main() {
 			}
 		}
 	}()
-
-	configureLogrus()
-	printVersion()
-	
-	if !config.HasGlobalDebugEnabled() {
-		logLevel := config.GetInstance().Global().LogLevel()
-
-		log.SetLevel(logLevel)
-	}
-
-	storage.InitializeConfiguration()
-	scheduleDiskUpdates()
-
-	web.StartServer()
 }
 
 func configureLogrus() {

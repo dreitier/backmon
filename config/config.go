@@ -24,6 +24,7 @@ var (
 	once     sync.Once
 	configSearchDirectories []string
 	hasGlobalDebugEnabled bool
+	isRunningInBackgroundForced bool
 )
 
 const (
@@ -34,7 +35,9 @@ const (
 
 func init() {
 	flag.BoolVar(&hasGlobalDebugEnabled, "debug", false, "Enable debug log; overwrites any configuration file loglevel")
-	
+	flag.BoolVar(&isRunningInBackgroundForced, "background", false, "Run in background; no interactive terminal")
+	flag.Parse()
+
 	configSearchDirectories = append(configSearchDirectories, PathLocal)
 
 	userHome, err := os.UserHomeDir()
@@ -45,6 +48,10 @@ func init() {
 	}
 
 	configSearchDirectories = append(configSearchDirectories, PathGlobal)
+}
+
+func IsRunningInBackgroundForced() bool {
+	return isRunningInBackgroundForced
 }
 
 func HasGlobalDebugEnabled() bool {
@@ -82,8 +89,6 @@ func (c *configuration) Disks() *DisksConfiguration {
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
-	
-	flag.Parse()
 
 	if hasGlobalDebugEnabled {
 		log.SetLevel(log.DebugLevel)

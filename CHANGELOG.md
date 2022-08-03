@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+
+## [1.5.1] - 2022-08-03
+### Added
 - Log output will now show date and time
+- *cloudmon* supports `-background` parameter to disable interactive terminal
+
+### Fixed
+- *cloumon* does not exit when running without any `/dev/tty`
 
 ## [1.5.0] - 2022-08-02
 ### Added
@@ -16,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disks can be refreshed by hitting `Ctrl+R` or just `r` in the console
 
 ### Fixed
-- `--debug` had no effect when log setting in `config.yaml` was missing
+- `-debug` had no effect when log setting in `config.yaml` was missing
 
 ## [1.4.0] - 2022-07-19
 ### Added

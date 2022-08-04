@@ -330,6 +330,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	const paramSecretAccessKey = "secret_access_key"
 	const paramEndpoint = "endpoint"
 	const paramToken = "token"
+	const paramAutoDiscoverDisks = "auto_discover_disks"
 
 	// check if local env oder S3 env
 	if cfg.Has("path") {
@@ -353,14 +354,20 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			forcePathStyle = cfg.Bool(paramForcePathStyle)
 		}
 
+		autoDiscoverDisks := true
+		if (cfg.Has(paramAutoDiscoverDisks)) {
+			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
+		}
+
 		c = &ClientConfiguration{
-			EnvName:        envName,
-			Region:         region,
-			ForcePathStyle: forcePathStyle,
-			AccessKey:      cfg.String(paramAccessKeyId),
-			SecretKey:      cfg.String(paramSecretAccessKey),
-			Endpoint:       cfg.String(paramEndpoint),
-			Token:          cfg.String(paramToken),
+			EnvName:           envName,
+			Region:            region,
+			ForcePathStyle:    forcePathStyle,
+			AccessKey:         cfg.String(paramAccessKeyId),
+			SecretKey:         cfg.String(paramSecretAccessKey),
+			Endpoint:          cfg.String(paramEndpoint),
+			Token:             cfg.String(paramToken),
+			AutoDiscoverDisks: autoDiscoverDisks,
 		}
 	}
 

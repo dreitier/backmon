@@ -23,6 +23,7 @@ environments:
     access_key_id: AWS_ACCESS_KEY_1
     secret_access_key: AWS_SECRET_ACCESS_KEY_1
     region: eu-central-1
+    auto_discover_disks: true
 
   local-minio-environment:
     access_key_id: MINIO_ACCESS_KEY_1

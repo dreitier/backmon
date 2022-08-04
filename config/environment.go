@@ -7,12 +7,13 @@ type EnvironmentConfiguration struct {
 }
 
 type ClientConfiguration struct {
-	EnvName        string
-	Directory      string
-	Region         string
-	AccessKey      string
-	SecretKey      string
-	Endpoint       string
-	ForcePathStyle bool
-	Token          string
+	EnvName           string
+	Directory         string
+	Region            string
+	AccessKey         string
+	SecretKey         string
+	Endpoint          string
+	ForcePathStyle    bool
+	Token             string
+	AutoDiscoverDisks bool
 }

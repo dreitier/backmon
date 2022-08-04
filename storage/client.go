@@ -17,13 +17,14 @@ type Client interface {
 func NewClient(config *config.ClientConfiguration) Client {
 	if config.Directory == "" {
 		return &provider.S3Client{
-			EnvName:        config.EnvName,
-			Region:         config.Region,
-			AccessKey:      config.AccessKey,
-			SecretKey:      config.SecretKey,
-			Endpoint:       config.Endpoint,
-			ForcePathStyle: config.ForcePathStyle,
-			Token:          config.Token,
+			EnvName:           config.EnvName,
+			Region:            config.Region,
+			AccessKey:         config.AccessKey,
+			SecretKey:         config.SecretKey,
+			Endpoint:          config.Endpoint,
+			ForcePathStyle:    config.ForcePathStyle,
+			Token:             config.Token,
+			AutoDiscoverDisks: config.AutoDiscoverDisks,
 		}
 	}
 

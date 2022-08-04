@@ -65,6 +65,10 @@ func NewSingleDiskConfiguration(diskNameOrRegExp string) (*SingleDiskConfigurati
 	return r, nil
 }
 
+func (self *DisksConfiguration) GetIncludedDisks() map[string]SingleDiskConfiguration {
+	return self.include
+}
+
 // Return true if the given disk is defined as "included" through some policy
 func (self *DisksConfiguration) IsDiskIncluded(diskName string) bool {
 	status, appliedPolicy := GetDiskStatus(diskName, self)

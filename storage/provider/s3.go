@@ -26,6 +26,7 @@ type S3Client struct {
 	ForcePathStyle bool
 	EnvName        string
 	s3Client       *s3.S3
+	AutoDiscoverDisks bool
 }
 
 func getClient(c *S3Client) (*s3.S3, error) {
@@ -196,55 +197,71 @@ func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOu
 	return out, nil
 }
 
-func (c *S3Client) findAvailableDisks() ([]*s3.Bucket, error) {
-	var r []*s3.Bucket
-
+func (c *S3Client) GetDiskNames() ([]string, error) {
 	svc, err := getClient(c)
 
 	if err != nil {
 		return nil, fmt.Errorf("Could not acquire S3 client instance: %s", err)
 	}
 
+	if (c.AutoDiscoverDisks) {
+		return c.findAvailableDisksByAutoDiscovery(svc)
+	}
+
+	return c.findAvailableDisksByInclusion(svc)
+}
+
+// Find available disks by iterating over each available bucket. That assumes that the AWS user has the IAM permission `ListAllMyBuckets`
+// @see #9
+func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.S3) ([]string, error) {
+	var r []string
+
+	log.Info("Auto-discovering disks based upon available S3 buckets...")
 	result, err := svc.ListBuckets(&s3.ListBucketsInput{})
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to list S3 disks: %s", err)
+		return nil, fmt.Errorf("Failed to list S3 disks by auto discovery: %s", err)
 	}
 
-	for _, disk := range result.Buckets {
-		// don't try to list items in ignored disks
-		diskName := *disk.Name
-		
-		if !config.GetInstance().Disks().IsDiskIncluded(diskName) {
-			continue
+	for _, bucketAsDisk := range result.Buckets {
+		if c.hasAccessToBucket(svc, bucketAsDisk.Name) {
+			r = append(r, *bucketAsDisk.Name)
 		}
-		_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(diskName)})
-
-		if err != nil {
-			log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", disk, err)
-			continue
-		}
-
-		r = append(r, disk)
 	}
 
 	return r, nil
 }
 
-func (c *S3Client) GetDiskNames() ([]string, error) {
-	var diskNames []string
+// Find available disks by iterating over disks.include configuration parameter
+func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
+	var r[]string
 
-	disks, err := c.findAvailableDisks()
+	log.Info("Finding disks based upon disks.include configuration parameter...")
+
+	for keyAsBucketName, _ := range config.GetInstance().Disks().GetIncludedDisks() {
+		if c.hasAccessToBucket(svc, &keyAsBucketName) {
+			r = append(r, keyAsBucketName)
+		}
+	}
+
+	return r, nil
+}
+
+// Check if objects from the bucket can be retrieved. It is basically a test for the IAM permission for GetObject
+func (c *S3Client) hasAccessToBucket(svc *s3.S3, bucketName *string) (bool) {
+	// don't try to list items in ignored disks
+	if !config.GetInstance().Disks().IsDiskIncluded(*bucketName) {
+		return false
+	}
+
+	_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get disk names: %v", err)
+		log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", *bucketName, err)
+		return false
 	}
 
-	for _, disk := range disks {
-		diskNames = append(diskNames, *disk.Name)
-	}
-
-	return diskNames, nil
+	return true
 }
 
 func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {

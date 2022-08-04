@@ -19,9 +19,9 @@ You can find our official documentation at [https://dreitier.github.io/cloudmon-
 We provide a Helm chart for *cloudmon* which you can easily install:
 
 ```
-helm repo add dreitier https://dreitier.github.io/helm-charts/
-helm repo update
-helm install dreitier/cloudmon
+$ helm repo add dreitier https://dreitier.github.io/helm-charts/
+$ helm repo update
+$ helm install dreitier/cloudmon
 ```
 
 ### Local installation
@@ -47,8 +47,8 @@ You can find ready-to-run Docker containers at [dreitier/cloudmon](https://hub.d
 2. Create a new release (artifact & Docker container) by pushing a new Git tag:
 
 ```bash
-git tag x.y.z
-git push origin x.y.z
+$ git tag x.y.z
+$ git push origin x.y.z
 ```
 
 ## Changelog

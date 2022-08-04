@@ -12,10 +12,9 @@ You can easily integrate *cloudmon* into your Prometheus- and Grafana-based infr
 You can find our official documentation at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
 
 ### Dependencies
-*cloudmon* requires Go 1.11 or later to make use of Go modules, see [https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51](https://medium.com/mindorks/create-projects-independent-of-gopath-using-go-modules-802260cdfb51).
+During build time, *cloudmon* requires Go 1.18 or later.
 
 ### Helm
-
 We provide a Helm chart for *cloudmon* which you can easily install:
 
 ```

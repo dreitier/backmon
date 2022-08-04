@@ -5,6 +5,7 @@ EXECUTABLE=cloudmon
 # @see https://stackoverflow.com/a/24264930/2545275
 GIT_COMMIT ?= $(shell git rev-list -1 HEAD | cut -c1-7)
 GIT_TAG ?= $(shell git tag --points-at HEAD)
+TAG ?= latest
 
 all: build
 

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # builder image
-FROM golang:1.16 AS builder
+FROM golang:1.18 AS builder
 
 # if available, inject build args from GitHub Actions so that we have the current commit and tag
 ARG GIT_COMMIT

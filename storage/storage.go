@@ -289,12 +289,18 @@ func UpdateDiskInfo() {
 }
 
 func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
+	log.Debugf("Updating metrics ...")
+
 	now := time.Now()
 	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))
 		fileGroups := make(FileLookup, len(dirDef.Files))
 		findMatchingDirs(root, dirDef, 0, 0, vars, fileGroups)
+
+		if len(fileGroups) == 0 {
+			log.Warnf("Could not find any file groups. Either the root directory is wrong or no files are matching the defined pattern")
+		}
 
 		for _, fileDef := range dirDef.Files {
 			lastRun := backup.FindPrevious(fileDef.Schedule, now)

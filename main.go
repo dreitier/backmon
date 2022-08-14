@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	termbox "github.com/nsf/termbox-go"
+	"os/signal"
+	"syscall"
 )
 
 const app = "cloudmon"
@@ -27,6 +29,7 @@ func printVersion() {
 func main() {
 	configureLogrus()
 	configureTerminal()
+	configureSignals()
 	printVersion()
 
 	if !config.HasGlobalDebugEnabled() {
@@ -88,6 +91,18 @@ func configureLogrus() {
     customFormatter.TimestampFormat = "2022-08-02 20:22:05"
     customFormatter.FullTimestamp = true
 	log.SetFormatter(customFormatter)
+}
+
+func configureSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+
+	go func(){
+		for _ = range c {
+			log.Printf("Got HUP signal, reloading ...")
+			storage.UpdateDiskInfo()
+		}
+	}()
 }
 
 func scheduleDiskUpdates() {

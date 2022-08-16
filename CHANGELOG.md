@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Received SIGHUP reloads disk configuration (#10)
+- Support for TLS encryption (#11)
 
 ### Fixed
 - IAM permission ListAllMyBuckets is no longer needed (#9)

@@ -196,17 +196,26 @@ func parseHttpSection(cfg Raw) *HttpConfiguration {
 	var r *HttpConfiguration
 
 	const paramBasicAuth = "basic_auth" 
+	const paramTls = "tls"
 
-	var basicAuth *BasicAuthConfiguration
+	var basicAuthConfiguration *BasicAuthConfiguration
+	var tlsConfiguration *TlsConfiguration
 
 	if (cfg.Has(paramBasicAuth)) {
-		basicAuth = parseBasicAuthConfiguration(cfg.Sub(paramBasicAuth))
+		basicAuthConfiguration = parseBasicAuthConfiguration(cfg.Sub(paramBasicAuth))
 	}
 
-	log.Infof("Using HTTP Basic auth: %t", basicAuth != nil)
+	log.Infof("Using HTTP Basic auth: %t", basicAuthConfiguration != nil)
+
+	if (cfg.Has(paramTls)) {
+		tlsConfiguration = parseTlsConfiguration(cfg.Sub(paramTls))
+	}
+
+	log.Infof("Using TLS: %t", tlsConfiguration != nil)
 
 	r = &HttpConfiguration{
-		BasicAuth: basicAuth,
+		BasicAuth: basicAuthConfiguration,
+		Tls: tlsConfiguration,
 	}
 
 	return r
@@ -226,6 +235,34 @@ func parseBasicAuthConfiguration(cfg Raw) *BasicAuthConfiguration {
 			r = &BasicAuthConfiguration{
 				Username: cfg.String(paramUsername),
 				Password: cfg.String(paramPassword),
+			}
+		}
+	}
+
+	return r
+}
+
+func parseTlsConfiguration(cfg Raw) *TlsConfiguration {
+	var r *TlsConfiguration
+
+	const paramKey = "key"
+	const paramCertificate = "certificate"
+	const paramIsStrict = "strict"
+
+	if (cfg.Has(paramKey) && cfg.Has(paramCertificate)) {
+		key := cfg.String(paramKey)
+		certificate := cfg.String(paramCertificate)
+		isStrict := false
+
+		if cfg.Has(paramIsStrict) {
+			isStrict = cfg.Bool(paramIsStrict)
+		}
+
+		if key != "" && certificate != "" {
+			r = &TlsConfiguration{
+				CertificatePath: cfg.String(paramCertificate),
+				PrivateKeyPath:  cfg.String(paramKey),
+				IsStrict:        isStrict,
 			}
 		}
 	}

@@ -6,6 +6,10 @@ http:
   basic_auth:
     username: my_username
     password: my_password
+  tls:
+    certificate: server.rsa.crt
+    key: server.rsa.key
+    strict: true
 
 downloads: 
   enabled: false

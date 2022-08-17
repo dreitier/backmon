@@ -2,28 +2,29 @@ package config
 
 import (
 	"errors"
+	"flag"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
-	"flag"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type configuration struct {
 	global       *GlobalConfiguration
 	http         *HttpConfiguration
 	downloads    *DownloadsConfiguration
-	disks		 *DisksConfiguration
+	disks        *DisksConfiguration
 	environments []*EnvironmentConfiguration
 }
 
 var (
-	instance *configuration
-	once     sync.Once
-	configSearchDirectories []string
-	hasGlobalDebugEnabled bool
+	instance                    *configuration
+	once                        sync.Once
+	configSearchDirectories     []string
+	hasGlobalDebugEnabled       bool
 	isRunningInBackgroundForced bool
 )
 
@@ -42,7 +43,7 @@ func init() {
 
 	userHome, err := os.UserHomeDir()
 
-	if  err == nil{
+	if err == nil {
 		userHome = fmt.Sprintf("%s%c%s", userHome, os.PathSeparator, ".cloudmon")
 		configSearchDirectories = append(configSearchDirectories, userHome)
 	}
@@ -72,6 +73,14 @@ func (c *configuration) Global() *GlobalConfiguration {
 
 func (c *configuration) Environments() []*EnvironmentConfiguration {
 	return c.environments
+}
+
+func (c *configuration) TotalEnvironments() float64 {
+	if nil == c.Environments() {
+		return float64(0)
+	}
+
+	return float64(len(c.Environments()))
 }
 
 func (c *configuration) Downloads() *DownloadsConfiguration {
@@ -139,10 +148,10 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 	// #5:UC2: include is the default behaviour
 	allOthers := DISKS_BEHAVIOUR_INCLUDE
 
-	if (cfg.Has(paramAllOthers)) {
+	if cfg.Has(paramAllOthers) {
 		rawAllOthers := cfg.String(paramAllOthers)
 
-		switch (rawAllOthers) {
+		switch rawAllOthers {
 		case paramAllOthersValueInclude:
 			allOthers = DISKS_BEHAVIOUR_INCLUDE
 			break
@@ -158,18 +167,18 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 	excludeDisks, excludeRegExps := parseIncludeExcludeSection(cfg.StringSlice(paramExclude))
 
 	r = &DisksConfiguration{
-		behaviourForAllOthers:	allOthers,
-		include:				includeDisks,
-		includeRegExps: 		includeRegExps,
-		exclude:				excludeDisks,
-		excludeRegExps:			excludeRegExps, 
+		behaviourForAllOthers: allOthers,
+		include:               includeDisks,
+		includeRegExps:        includeRegExps,
+		exclude:               excludeDisks,
+		excludeRegExps:        excludeRegExps,
 	}
 
 	return r
 }
 
 // Parses `disks.include` and `disks.exclude`
-func parseIncludeExcludeSection(rawDiskNames []string) (/*diskNames */ map[string]SingleDiskConfiguration, /* diskRegExps */ []SingleDiskConfiguration) {
+func parseIncludeExcludeSection(rawDiskNames []string) ( /*diskNames */ map[string]SingleDiskConfiguration /* diskRegExps */, []SingleDiskConfiguration) {
 	var diskNames = make(map[string]SingleDiskConfiguration)
 	var diskRegExps = []SingleDiskConfiguration{}
 
@@ -182,7 +191,7 @@ func parseIncludeExcludeSection(rawDiskNames []string) (/*diskNames */ map[strin
 		}
 
 		// put it in the correct bucket
-		if (singleDiskConfiguration.IsRegularExpression) {
+		if singleDiskConfiguration.IsRegularExpression {
 			diskRegExps = append(diskRegExps, *singleDiskConfiguration)
 		} else {
 			diskNames[singleDiskConfiguration.Name] = *singleDiskConfiguration
@@ -195,19 +204,19 @@ func parseIncludeExcludeSection(rawDiskNames []string) (/*diskNames */ map[strin
 func parseHttpSection(cfg Raw) *HttpConfiguration {
 	var r *HttpConfiguration
 
-	const paramBasicAuth = "basic_auth" 
+	const paramBasicAuth = "basic_auth"
 	const paramTls = "tls"
 
 	var basicAuthConfiguration *BasicAuthConfiguration
 	var tlsConfiguration *TlsConfiguration
 
-	if (cfg.Has(paramBasicAuth)) {
+	if cfg.Has(paramBasicAuth) {
 		basicAuthConfiguration = parseBasicAuthConfiguration(cfg.Sub(paramBasicAuth))
 	}
 
 	log.Infof("Using HTTP Basic auth: %t", basicAuthConfiguration != nil)
 
-	if (cfg.Has(paramTls)) {
+	if cfg.Has(paramTls) {
 		tlsConfiguration = parseTlsConfiguration(cfg.Sub(paramTls))
 	}
 
@@ -215,7 +224,7 @@ func parseHttpSection(cfg Raw) *HttpConfiguration {
 
 	r = &HttpConfiguration{
 		BasicAuth: basicAuthConfiguration,
-		Tls: tlsConfiguration,
+		Tls:       tlsConfiguration,
 	}
 
 	return r
@@ -227,7 +236,7 @@ func parseBasicAuthConfiguration(cfg Raw) *BasicAuthConfiguration {
 	const paramUsername = "username"
 	const paramPassword = "password"
 
-	if (cfg.Has(paramUsername) && cfg.Has(paramPassword)) {
+	if cfg.Has(paramUsername) && cfg.Has(paramPassword) {
 		username := cfg.String(paramUsername)
 		password := cfg.String(paramPassword)
 
@@ -249,7 +258,7 @@ func parseTlsConfiguration(cfg Raw) *TlsConfiguration {
 	const paramCertificate = "certificate"
 	const paramIsStrict = "strict"
 
-	if (cfg.Has(paramKey) && cfg.Has(paramCertificate)) {
+	if cfg.Has(paramKey) && cfg.Has(paramCertificate) {
 		key := cfg.String(paramKey)
 		certificate := cfg.String(paramCertificate)
 		isStrict := false
@@ -273,10 +282,10 @@ func parseTlsConfiguration(cfg Raw) *TlsConfiguration {
 func parseDownloadsSection(cfg Raw) *DownloadsConfiguration {
 	var r *DownloadsConfiguration
 
-	const paramEnabled = "enabled" 
+	const paramEnabled = "enabled"
 
 	enabled := false
-	if (cfg.Has(paramEnabled)) {
+	if cfg.Has(paramEnabled) {
 		enabled = cfg.Bool(paramEnabled)
 	}
 
@@ -322,8 +331,8 @@ func parseGlobalSection(cfg Raw) *GlobalConfiguration {
 	}
 
 	return &GlobalConfiguration{
-		logLevel: logLevel, 
-		httpPort: httpPort, 
+		logLevel:       logLevel,
+		httpPort:       httpPort,
 		updateInterval: updateInterval,
 	}
 }
@@ -377,8 +386,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		}
 
 		c = &ClientConfiguration{
-			Directory: path, 
-			EnvName: envName,
+			Directory: path,
+			EnvName:   envName,
 		}
 	} else {
 		region := "eu-central-1"
@@ -387,12 +396,12 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		}
 
 		forcePathStyle := false
-		if (cfg.Has(paramForcePathStyle)) {
+		if cfg.Has(paramForcePathStyle) {
 			forcePathStyle = cfg.Bool(paramForcePathStyle)
 		}
 
 		autoDiscoverDisks := true
-		if (cfg.Has(paramAutoDiscoverDisks)) {
+		if cfg.Has(paramAutoDiscoverDisks) {
 			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
 		}
 
@@ -414,8 +423,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	}
 
 	return &EnvironmentConfiguration{
-		Name: envName, 
-		Client: c, 
+		Name:        envName,
+		Client:      c,
 		Definitions: definitions,
 	}, nil
 }

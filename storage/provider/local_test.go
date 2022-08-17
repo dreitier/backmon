@@ -3,7 +3,7 @@ package provider
 import (
 	"os"
 	"testing"
-	"github.com/dreitier/cloudmon/storage/fs"
+	//	"github.com/dreitier/cloudmon/storage/fs"
 )
 
 func TestLocalClient_GetDiskNames(t *testing.T) {

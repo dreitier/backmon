@@ -1,19 +1,22 @@
 package main
 
 import (
-	"github.com/dreitier/cloudmon/config"
-	"github.com/dreitier/cloudmon/storage"
-	"github.com/dreitier/cloudmon/web"
-	log "github.com/sirupsen/logrus"
-	"time"
 	"fmt"
 	"os"
-	termbox "github.com/nsf/termbox-go"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/dreitier/cloudmon/config"
+	"github.com/dreitier/cloudmon/metrics"
+	"github.com/dreitier/cloudmon/storage"
+	"github.com/dreitier/cloudmon/web"
+	termbox "github.com/nsf/termbox-go"
+	log "github.com/sirupsen/logrus"
 )
 
 const app = "cloudmon"
+
 var gitRepo = "dreitier/cloudmon"
 var gitCommit = "unknown"
 var gitTag = "unknown"
@@ -36,6 +39,9 @@ func main() {
 		logLevel := config.GetInstance().Global().LogLevel()
 		log.SetLevel(logLevel)
 	}
+
+	// #13: update number of total environments
+	metrics.GetCloudmonMetrics().EnvironmentsTotal.Set(config.GetInstance().TotalEnvironments())
 
 	storage.InitializeConfiguration()
 	scheduleDiskUpdates()
@@ -75,7 +81,7 @@ func configureTerminal() {
 				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-				// handlq exiting
+					// handlq exiting
 				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
 					log.Printf("Exiting...")
 					termbox.Close()
@@ -90,8 +96,8 @@ func configureTerminal() {
 
 func configureLogrus() {
 	customFormatter := new(log.TextFormatter)
-    customFormatter.TimestampFormat = "2022-08-02 20:22:05"
-    customFormatter.FullTimestamp = true
+	customFormatter.TimestampFormat = "2022-08-02 20:22:05"
+	customFormatter.FullTimestamp = true
 	log.SetFormatter(customFormatter)
 }
 
@@ -99,7 +105,7 @@ func configureSignals() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP)
 
-	go func(){
+	go func() {
 		for _ = range c {
 			log.Printf("Got HUP signal, reloading ...")
 			storage.UpdateDiskInfo()

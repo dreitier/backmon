@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dreitier/cloudmon/backup"
-	"github.com/dreitier/cloudmon/config"
-	"github.com/dreitier/cloudmon/metrics"
-	fs "github.com/dreitier/cloudmon/storage/fs"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dreitier/cloudmon/backup"
+	"github.com/dreitier/cloudmon/config"
+	"github.com/dreitier/cloudmon/metrics"
+	fs "github.com/dreitier/cloudmon/storage/fs"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -118,7 +119,7 @@ func (client *clientData) dropAllDisks() {
 type DiskData struct {
 	Name            string
 	SafeName        string
-	metrics         *metrics.Disk
+	metrics         *metrics.DiskMetric
 	groups          []map[string][]*fs.FileInfo
 	Definition      backup.Definition
 	definitionsHash [sha1.Size]byte
@@ -216,6 +217,7 @@ func (list FileGroup) Less(i int, j int) bool {
 func (list FileGroup) Swap(i int, j int) {
 	list[i], list[j] = list[j], list[i]
 }
+
 // END
 
 func (list FileGroup) Purge(fileDef *backup.BackupFileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
@@ -321,13 +323,13 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 
 				if len(matches) > 0 {
 					latest[k] = matches[0].File
-					
+
 					log.Debugf("      > %s < selected as latest/newest file based upon sorting algorithm", matches[0].File.Name)
 
 					disk.metrics.UpdateLatestFile(
-						dirDef.Alias, 
-						fileDef.Alias, 
-						group, 
+						dirDef.Alias,
+						fileDef.Alias,
+						group,
 						matches[0].File,
 						matches[0].Time)
 				}
@@ -365,7 +367,7 @@ func findMatchingDirs(
 		//TODO: collect variable values
 		matches := findMatchingFiles(dir, dirDef, vars)
 		group, exists := fileGroups[path]
-		
+
 		if !exists {
 			group = make([]FileGroup, len(dirDef.Files))
 			fileGroups[path] = group
@@ -379,7 +381,7 @@ func findMatchingDirs(
 	}
 
 	pattern := dirDef.Filter.Layers[level]
-	
+
 	for _, subDir := range dir.SubDirs {
 		match := pattern.FindStringSubmatch(subDir.Name)
 
@@ -464,7 +466,7 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 			str.WriteString(v.Name)
 			continue
 		}
-			
+
 		str.WriteString("{{")
 		str.WriteString(v.Name)
 		str.WriteString("}}")
@@ -522,7 +524,7 @@ func collectMatchingFiles(
 			var useDefaultsFromTime *time.Time
 
 			// first of, we have to identify which file attribute to use as a baseline for interpolated timestamps
-			switch (fileDef.SortBy) {
+			switch fileDef.SortBy {
 			case backup.SORT_BY_BORN_AT:
 				useDefaultsFromTime = &file.BornAt
 				break
@@ -540,7 +542,7 @@ func collectMatchingFiles(
 			// set the file's interpolated timestamp
 			file.InterpolatedTimestamp = &interpolatedTimestamp
 
-			switch (fileDef.SortBy) {
+			switch fileDef.SortBy {
 			case backup.SORT_BY_BORN_AT:
 				sortByTime = &file.BornAt
 				break
@@ -556,14 +558,14 @@ func collectMatchingFiles(
 			}
 
 			// [:19] chops off timezone information, which is always ' +0000 UTC'
-			log.Debugf("      - %s @ %s | born:%s | mod:%s | arch:%s | interpolated:%s", 
-				file.Name, 
-				sortByTime.String()[:19], 
+			log.Debugf("      - %s @ %s | born:%s | mod:%s | arch:%s | interpolated:%s",
+				file.Name,
+				sortByTime.String()[:19],
 				file.BornAt.String()[:19],
 				file.ModifiedAt.String()[:19],
 				file.ArchivedAt.String()[:19],
 				file.InterpolatedTimestamp.String()[:19])
-			
+
 			matches = append(matches, TemporalFile{*sortByTime, file})
 		}
 	}
@@ -617,7 +619,7 @@ func Download(
 	groupName string,
 ) (bytes io.ReadCloser, err error) {
 	groups, file := findGroups(diskName, directoryName, fileName)
-	
+
 	if groups == nil {
 		return nil, errors.New("the requested file does not exist")
 	}

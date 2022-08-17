@@ -1,19 +1,22 @@
 package metrics
 
 import (
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
 )
 
-const(
-	namespace = "cloudmon"
-	subsystem = "backup"
+const (
+	namespace             = "cloudmon"
+	subsystem             = "backup"
+	subsystemEnvironments = "environments"
+	subsystemDisks        = "disks"
 )
 
 var (
 	registry = prometheus.NewRegistry()
-	handler = promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+	handler  = promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 		ErrorHandling: promhttp.HTTPErrorOnError,
 	})
 )

@@ -7,17 +7,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dreitier/cloudmon/config"
-	"github.com/dreitier/cloudmon/metrics"
-	"github.com/dreitier/cloudmon/storage"
-	"github.com/dreitier/cloudmon/web"
+	"github.com/dreitier/backmon/config"
+	"github.com/dreitier/backmon/metrics"
+	"github.com/dreitier/backmon/storage"
+	"github.com/dreitier/backmon/web"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
 )
 
-const app = "cloudmon"
+const app = "backmon"
 
-var gitRepo = "dreitier/cloudmon"
+var gitRepo = "dreitier/backmon"
 var gitCommit = "unknown"
 var gitTag = "unknown"
 
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// #13: update number of total environments
-	metrics.GetCloudmonMetrics().EnvironmentsTotal.Set(config.GetInstance().TotalEnvironments())
+	metrics.GetApplicationMetrics().EnvironmentsTotal.Set(config.GetInstance().TotalEnvironments())
 
 	storage.InitializeConfiguration()
 	scheduleDiskUpdates()

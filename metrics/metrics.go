@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	namespace             = "cloudmon"
+	namespace             = "backmon"
 	subsystem             = "backup"
 	subsystemEnvironments = "environments"
 	subsystemDisks        = "disks"

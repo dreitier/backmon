@@ -1,26 +1,26 @@
-# cloudmon - Monitoring of backup files in filesystems and object storages
-*cloudmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
+# backmon - Monitoring of backup files in filesystems and object storages
+*backmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
 
 ## Description
 
-With *cloudmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored either in a local filesystem or inside an S3-compatible object storage like AWS S3 or MinIO.
+With *backmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored either in a local filesystem or inside an S3-compatible object storage like AWS S3 or MinIO.
 
-You can easily integrate *cloudmon* into your Prometheus- and Grafana-based infrastructure for analysing the duration of creating backups or alerting if a backup fails some constraints.
+You can easily integrate *backmon* into your Prometheus- and Grafana-based infrastructure for analysing the duration of creating backups or alerting if a backup fails some constraints.
 
 ## Getting started
 ### Documentation
-You can find our official documentation at [https://dreitier.github.io/cloudmon-docs](https://dreitier.github.io/cloudmon-docs).
+You can find our official documentation at [https://dreitier.github.io/backmon-docs](https://dreitier.github.io/backmon-docs).
 
 ### Dependencies
-During build time, *cloudmon* requires Go 1.18 or later.
+During build time, *backmon* requires Go 1.18 or later.
 
 ### Helm
-We provide a Helm chart for *cloudmon* which you can easily install:
+We provide a Helm chart for *backmon* which you can easily install:
 
 ```
 $ helm repo add dreitier https://dreitier.github.io/helm-charts/
 $ helm repo update
-$ helm install dreitier/cloudmon
+$ helm install dreitier/backmon
 ```
 
 ### Local installation
@@ -37,7 +37,7 @@ $ helm install dreitier/cloudmon
 	$ sudo go build
 
 ### Docker container
-You can find ready-to-run Docker containers at [dreitier/cloudmon](https://hub.docker.com/repository/docker/dreitier/cloudmon).
+You can find ready-to-run Docker containers at [dreitier/backmon](https://hub.docker.com/repository/docker/dreitier/backmon).
 
 ## Development
 ### Creating new releases
@@ -61,7 +61,7 @@ If you need professionally support, consulting or a dedicated feature, please ge
 Feel free to provide a pull request.
 
 ## TODO
-Please take a look in our [issue tracker](https://github.com/dreitier/cloudmon/issues).
+Please take a look in our [issue tracker](https://github.com/dreitier/backmon/issues).
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

@@ -1,5 +1,5 @@
-IMAGE=dreitier/cloudmon
-EXECUTABLE=cloudmon
+IMAGE=dreitier/backmon
+EXECUTABLE=backmon
 
 # if environment variables are defined (e.g. through GitHub Actions), use that. Otherwise, try to resolve them during build
 # @see https://stackoverflow.com/a/24264930/2545275

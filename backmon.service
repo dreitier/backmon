@@ -4,8 +4,8 @@ Description=Backup Metrics Exporter
 [Service]
 # root privileges required due to file permissions
 #User=node_exporter
-ExecStart=/opt/cloudmon/cloudmon
-WorkingDirectory=/opt/cloudmon
+ExecStart=/opt/backmon/backmon
+WorkingDirectory=/opt/backmon
 Restart=always
 
 [Install]

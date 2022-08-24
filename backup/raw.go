@@ -1,8 +1,8 @@
 package backup
 
 import (
-	"github.com/dreitier/cloudmon/config"
 	"fmt"
+	"github.com/dreitier/backmon/config"
 	"github.com/gorhill/cronexpr"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -37,13 +37,13 @@ type RawFile struct {
 
 func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
 	cfg, err := config.Parse(definitionsReader)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse definitions file: %v", err)
 	}
 
 	parsed := make(RawDefinition)
-	
+
 	for dirName := range cfg {
 		dirConfig := cfg.Sub(dirName)
 		dir, err := parseDirectorySection(dirConfig, dirName)
@@ -51,7 +51,7 @@ func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		parsed[dirName] = dir
 	}
 
@@ -79,7 +79,7 @@ func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {
 			if err != nil {
 				return nil, err
 			}
-			
+
 			files[fileName] = file
 		}
 	}
@@ -117,7 +117,7 @@ func parseFileSection(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
 		if err != nil {
 			return nil, nil
 		}
-		
+
 		file.Schedule = schedule
 	}
 

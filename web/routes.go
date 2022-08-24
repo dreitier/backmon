@@ -1,13 +1,13 @@
 package web
 
 import (
-	"github.com/dreitier/cloudmon/metrics"
+	"github.com/dreitier/backmon/config"
+	"github.com/dreitier/backmon/metrics"
+	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
-	"github.com/dreitier/cloudmon/config"
-	log "github.com/sirupsen/logrus"
-	"github.com/goji/httpauth"
 	"sync"
 )
 
@@ -52,7 +52,7 @@ func GetInstance() *routeConfiguration {
 		apiEndpoint.HandleFunc("/{disk}", DiskInfoHandler).Methods(HttpMethodGet)
 		apiEndpoint.HandleFunc("/{disk}/{dir}", DirectoryInfoHandler).Methods(HttpMethodGet)
 		apiEndpoint.HandleFunc("/{disk}/{dir}/{file}", FileInfoHandler).Methods(HttpMethodGet)
-	
+
 		if config.GetInstance().Downloads().Enabled {
 			log.Debug("Registering GET handler for artifact downloads")
 			apiEndpoint.HandleFunc("/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet)
@@ -63,12 +63,12 @@ func GetInstance() *routeConfiguration {
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Do stuff here
-        log.Debugf("GET %s", r.RequestURI)
-        // Call the next handler, which can be another middleware in the chain, or the final handler.
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Do stuff here
+		log.Debugf("GET %s", r.RequestURI)
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Base route to access the API Documentation.

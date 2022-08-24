@@ -18,7 +18,7 @@ FROM dreitier/interpolator:1.0.0 AS interpolator
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
-COPY --from=builder /build/cloudmon .
+COPY --from=builder /build/backmon .
 COPY --from=interpolator /app/interpolator .
 COPY entrypoint.sh /app
 

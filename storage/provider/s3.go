@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/dreitier/cloudmon/config"
-	fs "github.com/dreitier/cloudmon/storage/fs"
+	"github.com/dreitier/backmon/config"
+	fs "github.com/dreitier/backmon/storage/fs"
+	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 	log "github.com/sirupsen/logrus"
-	dotstat "github.com/dreitier/cloudmon/storage/fs/dotstat"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,15 +17,15 @@ import (
 )
 
 type S3Client struct {
-	Name           string
-	AccessKey      string
-	SecretKey      string
-	Token          string
-	Region         string
-	Endpoint       string
-	ForcePathStyle bool
-	EnvName        string
-	s3Client       *s3.S3
+	Name              string
+	AccessKey         string
+	SecretKey         string
+	Token             string
+	Region            string
+	Endpoint          string
+	ForcePathStyle    bool
+	EnvName           string
+	s3Client          *s3.S3
 	AutoDiscoverDisks bool
 }
 
@@ -71,7 +71,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 
 	// get items from the diskName
 	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
 	}
@@ -83,14 +83,14 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 		SubDirs: make(map[string]*fs.DirectoryInfo),
 	}
 
-	dotStatFiles := make(map[string /* path to regular file*/]string /* path to .stat file */)
+	dotStatFiles := make(map[string] /* path to regular file*/ string /* path to .stat file */)
 
 	c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
 
 	// if the diskName held more than $maxKeys items, fetch them until we got them all
 	for *result.IsTruncated {
 		result, err = svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName, Marker: result.NextMarker})
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
 		}
@@ -107,8 +107,8 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 }
 
 // Clean up files which have been temporary downloaded for .stat introspection
-func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string /* path to regular file*/]string /* path to .stat file */) {
-	for _, pathToDotStatFile :=  range *dotStatFiles {
+func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
+	for _, pathToDotStatFile := range *dotStatFiles {
 		log.Debugf("Removing temporary file %s", pathToDotStatFile)
 		err := os.Remove(pathToDotStatFile)
 
@@ -118,7 +118,7 @@ func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string /* path to reg
 	}
 }
 
-func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objects []*s3.Object, dotStatFiles *map[string /* path to regular file*/]string /* path to .stat file */) {
+func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objects []*s3.Object, dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
 	for _, obj := range objects {
 		pathSegments := strings.Split(*obj.Key, "/")
 		fileName := pathSegments[len(pathSegments)-1]
@@ -127,7 +127,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 
 		for i := 0; i < len(pathSegments); i++ {
 			next := currentDir.SubDirs[pathSegments[i]]
-			
+
 			if next == nil {
 				next = &fs.DirectoryInfo{
 					Name:    pathSegments[i],
@@ -145,23 +145,23 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 		// if object is a .stat file, it is downloaded for later introspection
 		if dotstat.IsStatFile(fileName) {
 			s3PathToStatFile := parentPath + "/" + fileName
-			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile) 
+			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile)
 
 			// TODO make temp directory configurable
-			tempFile, err := ioutil.TempFile(os.TempDir(), "cloudmon_" + strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+			tempFile, err := ioutil.TempFile(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
 
 			if err != nil {
 				log.Errorf("Unable to create temporary file for .stat: %s", err)
 				continue
 			}
 
-			localAbsolutePath :=  tempFile.Name()
+			localAbsolutePath := tempFile.Name()
 
 			// .stat files are registered for later examination
 			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
 			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
 			byteStreamContent, _ := ioutil.ReadAll(s3OutObject.Body)
-			
+
 			tempFile.Write(byteStreamContent)
 			(*dotStatFiles)[s3PathToNonStatFile] = localAbsolutePath
 
@@ -169,12 +169,12 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 		}
 
 		file := &fs.FileInfo{
-			Name:      	fileName,
+			Name:       fileName,
 			Parent:     parentPath,
-			BornAt: 	*obj.LastModified,
+			BornAt:     *obj.LastModified,
 			ModifiedAt: *obj.LastModified,
 			ArchivedAt: *obj.LastModified,
-			Size:      	*obj.Size,
+			Size:       *obj.Size,
 		}
 
 		currentDir.Files = append(currentDir.Files, file)
@@ -204,7 +204,7 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 		return nil, fmt.Errorf("Could not acquire S3 client instance: %s", err)
 	}
 
-	if (c.AutoDiscoverDisks) {
+	if c.AutoDiscoverDisks {
 		return c.findAvailableDisksByAutoDiscovery(svc)
 	}
 
@@ -234,7 +234,7 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.S3) ([]string, erro
 
 // Find available disks by iterating over disks.include configuration parameter
 func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
-	var r[]string
+	var r []string
 
 	log.Info("Finding disks based upon disks.include configuration parameter...")
 
@@ -248,7 +248,7 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
 }
 
 // Check if objects from the bucket can be retrieved. It is basically a test for the IAM permission for GetObject
-func (c *S3Client) hasAccessToBucket(svc *s3.S3, bucketName *string) (bool) {
+func (c *S3Client) hasAccessToBucket(svc *s3.S3, bucketName *string) bool {
 	// don't try to list items in ignored disks
 	if !config.GetInstance().Disks().IsDiskIncluded(*bucketName) {
 		return false

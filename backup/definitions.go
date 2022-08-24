@@ -2,10 +2,10 @@ package backup
 
 import (
 	"bytes"
-	"github.com/dreitier/cloudmon/config"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dreitier/backmon/config"
 	"github.com/gorhill/cronexpr"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -23,14 +23,14 @@ const (
 
 const (
 	SORT_BY_INTERPOLATION = iota
-	SORT_BY_BORN_AT = iota
-	SORT_BY_MODIFIED_AT = iota
-	SORT_BY_ARCHIVED_AT = iota
+	SORT_BY_BORN_AT       = iota
+	SORT_BY_MODIFIED_AT   = iota
+	SORT_BY_ARCHIVED_AT   = iota
 )
 
 //noinspection RegExpRedundantEscape
 var (
-	variableDefExp    = regexp.MustCompile(`\\\{\\\{(?P<var>\w+)\\\}\\\}`)
+	variableDefExp = regexp.MustCompile(`\\\{\\\{(?P<var>\w+)\\\}\\\}`)
 	// regular expression to match variable names like `{{myvariable}}`
 	variableDefExpRaw = regexp.MustCompile(`\{\{(?P<var>\w+)\}\}`)
 	variableExp       = regexp.MustCompile(`\\\$\\\{(?P<var>\w+)(?:\:(?P<op>[a-zA-Z]*))?\\\}`)
@@ -42,7 +42,7 @@ func ParseDefinition(definitionsReader io.Reader) (Definition, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return parseDirectories(raw)
 }
 
@@ -60,7 +60,7 @@ func parseDirectories(raw RawDefinition) ([]*Directory, error) {
 
 		var alias string
 		var safeAlias string
-		
+
 		if rawDir.Alias != "" {
 			alias = rawDir.Alias
 			var legal bool
@@ -115,7 +115,7 @@ func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*BackupFileDefinition {
 	files := make([]*BackupFileDefinition, 0, len(raw))
 	aliases := make(map[string]empty)
-	
+
 	for rawPattern, rawFile := range raw {
 		pattern, err := ParseFilePattern(rawPattern)
 
@@ -165,7 +165,7 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 			Alias:           alias,
 			SafeAlias:       safeAlias,
 			Schedule:        rawFile.Schedule,
-			SortBy:	         sortBy,
+			SortBy:          sortBy,
 			Purge:           rawFile.Purge,
 			RetentionCount:  retentionCount,
 			RetentionAge:    retentionAge,
@@ -226,7 +226,7 @@ func parseSortBy(op string) int {
 		return SORT_BY_INTERPOLATION
 	case "":
 		return SORT_BY_INTERPOLATION
-	default: 
+	default:
 		log.Warnf("Unknown 'sort' parameter '%s', defaulting to 'interpolation'", op)
 		return SORT_BY_INTERPOLATION
 	}
@@ -304,7 +304,7 @@ func ParseDirectoryPattern(pattern string) (*regexp.Regexp, error) {
 }
 
 // based upon the given path pattern, a directory filter is created. That DirectoryFilter contains the required regular expressions for each detected variable (like {{myvar}})
-func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string /* name of variable, like 'myvar' }}*/]uint /* index in filter.Variables, beginning with 1 */) {
+func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string] /* name of variable, like 'myvar' }}*/ uint /* index in filter.Variables, beginning with 1 */) {
 	normalized := strings.Trim(pattern, `/`)
 
 	if len(normalized) == 0 || normalized == "." {
@@ -312,7 +312,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 		normalized = "."
 		filter = DirectoryFilter{
 			Pattern:   normalized,
-			Template:  []string{ normalized },
+			Template:  []string{normalized},
 			Layers:    nil,
 			Variables: nil,
 		}

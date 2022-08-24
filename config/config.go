@@ -31,7 +31,7 @@ var (
 const (
 	CfgFileName = "config.yaml"
 	PathLocal   = "."
-	PathGlobal  = "/etc/cloudmon"
+	PathGlobal  = "/etc/backmon"
 )
 
 func init() {
@@ -44,7 +44,7 @@ func init() {
 	userHome, err := os.UserHomeDir()
 
 	if err == nil {
-		userHome = fmt.Sprintf("%s%c%s", userHome, os.PathSeparator, ".cloudmon")
+		userHome = fmt.Sprintf("%s%c%s", userHome, os.PathSeparator, ".backmon")
 		configSearchDirectories = append(configSearchDirectories, userHome)
 	}
 

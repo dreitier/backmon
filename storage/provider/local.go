@@ -3,15 +3,15 @@ package provider
 import (
 	"errors"
 	"fmt"
+	fs "github.com/dreitier/backmon/storage/fs"
+	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	fs "github.com/dreitier/cloudmon/storage/fs"
-	log "github.com/sirupsen/logrus"
-	dotstat "github.com/dreitier/cloudmon/storage/fs/dotstat"
 )
 
 type LocalClient struct {
@@ -31,7 +31,7 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 	currentSubdirectoryPath := filepath.Join(fullSubdirectoryPath, directoryName)
 	absoluteSubdirectoryPath := filepath.Join(root, currentSubdirectoryPath)
 	fileInfos, err := ioutil.ReadDir(absoluteSubdirectoryPath)
-	
+
 	if err != nil {
 		//TODO: log error
 		return nil, err
@@ -52,7 +52,7 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 			}
 
 			subDir, subErr := scanDir(root, currentSubdirectoryPath, fileInfo.Name(), maxDepth-1)
-			
+
 			if subErr == nil {
 				directoryContainer.SubDirs[subDir.Name] = subDir
 			}
@@ -64,18 +64,18 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 			log.Debugf("Adding .stat file %s for %s", pathToStatFile, pathToNonStatFile)
 		} else {
 			file := &fs.FileInfo{
-				Name:      	fileInfo.Name(),
+				Name:       fileInfo.Name(),
 				Parent:     absoluteSubdirectoryPath,
-				BornAt: 	fileInfo.ModTime(),
+				BornAt:     fileInfo.ModTime(),
 				ModifiedAt: fileInfo.ModTime(),
 				ArchivedAt: fileInfo.ModTime(),
-				Size:      	fileInfo.Size(),
+				Size:       fileInfo.Size(),
 			}
 
 			directoryContainer.Files = append(directoryContainer.Files, file)
 		}
 	}
-	
+
 	dotstat.ApplyDotStatValues(dotStatFiles, directoryContainer.Files)
 
 	return directoryContainer, nil

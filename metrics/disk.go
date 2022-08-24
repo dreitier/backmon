@@ -3,7 +3,7 @@ package metrics
 import (
 	"time"
 
-	fs "github.com/dreitier/cloudmon/storage/fs"
+	fs "github.com/dreitier/backmon/storage/fs"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -23,7 +23,7 @@ type DiskMetric struct {
 }
 
 func NewDisk(diskName string) *DiskMetric {
-	GetCloudmonMetrics().disksTotal.Inc()
+	GetApplicationMetrics().disksTotal.Inc()
 
 	presetLabels := map[string]string{"disk": diskName}
 	disk := &DiskMetric{
@@ -186,7 +186,7 @@ func (b *DiskMetric) Drop() {
 	registry.Unregister(b.latestFileArchivedAt)
 	registry.Unregister(b.latestSize)
 
-	GetCloudmonMetrics().disksTotal.Dec()
+	GetApplicationMetrics().disksTotal.Dec()
 }
 
 func (b *DiskMetric) resetMetrics() {

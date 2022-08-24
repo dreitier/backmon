@@ -1,7 +1,7 @@
 package backup
 
 import (
-	"github.com/dreitier/cloudmon/config"
+	"github.com/dreitier/backmon/config"
 	"github.com/gorhill/cronexpr"
 	"time"
 )
@@ -26,7 +26,7 @@ func FindPrevious(cron *cronexpr.Expression, moment time.Time) time.Time {
 			if !mid.IsZero() && mid.Before(high) {
 				break
 			}
-			if duration < -200 * config.Year {
+			if duration < -200*config.Year {
 				return time.Time{}
 			}
 		}

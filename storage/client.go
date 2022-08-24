@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"github.com/dreitier/cloudmon/config"
-	fs "github.com/dreitier/cloudmon/storage/fs"
-	provider "github.com/dreitier/cloudmon/storage/provider"
+	"github.com/dreitier/backmon/config"
+	fs "github.com/dreitier/backmon/storage/fs"
+	provider "github.com/dreitier/backmon/storage/provider"
 	"io"
 )
 

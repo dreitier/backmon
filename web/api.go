@@ -1,9 +1,9 @@
 package web
 
 import (
-	"github.com/dreitier/cloudmon/backup"
-	"github.com/dreitier/cloudmon/storage"
 	"encoding/json"
+	"github.com/dreitier/backmon/backup"
+	"github.com/dreitier/backmon/storage"
 	"io"
 	"net/http"
 )
@@ -69,9 +69,9 @@ func Download(
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachmernt; filename=\""+ fileName + "\"")
+	w.Header().Set("Content-Disposition", "attachmernt; filename=\""+fileName+"\"")
 	_, err = io.Copy(w, data)
-	if err != nil && err != io.EOF{
+	if err != nil && err != io.EOF {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

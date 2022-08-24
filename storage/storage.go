@@ -12,17 +12,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dreitier/cloudmon/backup"
-	"github.com/dreitier/cloudmon/config"
-	"github.com/dreitier/cloudmon/metrics"
-	fs "github.com/dreitier/cloudmon/storage/fs"
+	"github.com/dreitier/backmon/backup"
+	"github.com/dreitier/backmon/config"
+	"github.com/dreitier/backmon/metrics"
+	fs "github.com/dreitier/backmon/storage/fs"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
 	clients    = make(map[string]*clientData)
 	mutex      = &sync.Mutex{}
-	ignoreFile = &fs.FileInfo{Name: ".cloudmonignore"}
+	ignoreFile = &fs.FileInfo{Name: ".backmonignore"}
 )
 
 func InitializeConfiguration() {
@@ -79,10 +79,10 @@ func (client *clientData) updateDiskInfo() error {
 
 		_, exists := client.Disks[diskName]
 
-		// ignore disks containing a file called '.cloudmonignore'
+		// ignore disks containing a file called '.backmonignore'
 		buf, err := client.Client.Download(diskName, ignoreFile)
 		if err == nil {
-			// .cloudmonignore found
+			// .backmonignore found
 			_ = buf.Close()
 			if exists {
 				client.Disks[diskName].metrics.Drop()

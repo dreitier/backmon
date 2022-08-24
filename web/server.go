@@ -1,12 +1,12 @@
 package web
 
 import (
-	"github.com/dreitier/cloudmon/config"
+	"crypto/tls"
 	"fmt"
+	"github.com/dreitier/backmon/config"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"crypto/tls"
 )
 
 func StartServer() {
@@ -14,10 +14,10 @@ func StartServer() {
 	listenAddr := fmt.Sprintf(":%d", port)
 
 	log.Infof("Starting webserver on %s", listenAddr)
-	
+
 	// #11: support for TLS configuration
 	// optional tls.Config
-	var tlsServerConfig*tls.Config = nil
+	var tlsServerConfig *tls.Config = nil
 	// by default, we are not configuring TLS ciphers and let them as it is
 	var tlsNextProto map[string]func(*http.Server, *tls.Conn, http.Handler) = nil
 	// get user-defined TLS configuration from config.yaml
@@ -26,7 +26,7 @@ func StartServer() {
 	if userDefinedTlsConfiguration != nil {
 		// `strict: true` sets the TLS configuration to something SSLLabs prefers
 		// @see https://gist.github.com/denji/12b3a568f092ab951456
-		if (userDefinedTlsConfiguration.IsStrict) {
+		if userDefinedTlsConfiguration.IsStrict {
 			tlsServerConfig = &tls.Config{
 				MinVersion:               tls.VersionTLS12,
 				CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},

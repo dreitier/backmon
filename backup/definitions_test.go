@@ -210,3 +210,23 @@ func Test_applyFusion_returnsError_ifFuseReferencesAnUnknownVariable(t *testing.
 	// error
 	assertion.NotNil(applyFusion(filter.Variables, fuses))
 }
+
+func Test_parsePatternWithWildcard(t *testing.T) {
+	const fileNamePattern = "etcd-snapshot-my-cluster-%A"
+	const fileNameMatch = "etcd-snapshot-my-cluster-master-2023-06-30-eff38a07-75mxx-1700215202"
+	const fileNameFail = "etcd-snapshot-my-bla-master-2023-06-30-eff38a07-75mxx-1700215202"
+
+	regex, err := ParseFilePattern(fileNamePattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !regex.MatchString(fileNameMatch) {
+		t.Error("Regex did not match a correct patten:", fileNameMatch)
+	}
+
+	if regex.MatchString(fileNameFail) {
+		t.Error("Regex matched an incorrect pattern:", fileNameFail)
+	}
+
+}

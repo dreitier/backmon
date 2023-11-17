@@ -514,7 +514,7 @@ func writeSubstitutionInto(character byte, to *strings.Builder) (captureAdded bo
 		to.WriteString("(\\w+)")
 	case 'v':
 		to.WriteString("(" + variableValueSyntax + ")")
-	case '?':
+	case 'A':
 		to.WriteString("(.+?)")
 	default:
 		//The given character is not a valid substitute,

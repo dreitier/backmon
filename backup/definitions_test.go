@@ -9,7 +9,7 @@ import (
 )
 
 func Test_parseDefinitions(t *testing.T) {
-	definitionsFile, err := os.Open("backup_definitions.json")
+	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func Test_parseDefinitions(t *testing.T) {
 }
 
 func Test_parseDirectoryPattern(t *testing.T) {
-	const diskNamePattern = "/backup.to/{{service}}/inst_{{instance}}"
+	const diskNamePattern = "/backup.to/{{service}}/inst_{{instance}}/"
 	const diskNameMatch = "/backup.to/test#3/inst_a~1/"
 	const diskNameFail = "myapp_z/erg_production-2019-06-24_02-45-00.sql"
 

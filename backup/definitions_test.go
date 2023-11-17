@@ -104,7 +104,7 @@ func Test_parseDirectoryPatternWithNumber(t *testing.T) {
 }
 
 func Test_parseFilenamePattern(t *testing.T) {
-	const fileNamePattern = "myapp_${instance:lower}_production-%Y-%m-%d_%H-%M-%S.sql"
+	const fileNamePattern = "myapp_${instance:lower}_production-%Y-%M-%D_%h-%m-%s.sql"
 	const fileNameMatch = "myapp_zerg_production-2019-06-24_02-45-00.sql"
 	const fileNameFail = "myapp_z/erg_production-2019-06-24_02-45-00.sql"
 

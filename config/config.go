@@ -37,7 +37,6 @@ const (
 func init() {
 	flag.BoolVar(&hasGlobalDebugEnabled, "debug", false, "Enable debug log; overwrites any configuration file loglevel")
 	flag.BoolVar(&isRunningInBackgroundForced, "background", false, "Run in background; no interactive terminal")
-	flag.Parse()
 
 	configSearchDirectories = append(configSearchDirectories, PathLocal)
 

@@ -3,7 +3,7 @@ package config
 import (
 	"code.cloudfoundry.org/bytefmt"
 	"fmt"
-	"github.com/go-yaml/yaml"
+	"gopkg.in/yaml.v3"
 	"io"
 	"reflect"
 	"regexp"
@@ -16,11 +16,11 @@ import (
 const (
 	Second = time.Second
 	Minute = time.Minute
-	Hour = time.Hour
-	Day   = 24 * Hour
-	Week  = 7 * Day
-	Month = 30 * Day
-	Year  = 365 * Day
+	Hour   = time.Hour
+	Day    = 24 * Hour
+	Week   = 7 * Day
+	Month  = 30 * Day
+	Year   = 365 * Day
 )
 
 var (

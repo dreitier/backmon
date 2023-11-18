@@ -28,7 +28,7 @@ const (
 	SORT_BY_ARCHIVED_AT   = iota
 )
 
-//noinspection RegExpRedundantEscape
+// noinspection RegExpRedundantEscape
 var (
 	variableDefExp = regexp.MustCompile(`\\\{\\\{(?P<var>\w+)\\\}\\\}`)
 	// regular expression to match variable names like `{{myvariable}}`
@@ -298,12 +298,12 @@ func ParseDirectoryPattern(pattern string) (*regexp.Regexp, error) {
 	//Make sure to always match the whole string
 	pattern = "^" + pattern + "$"
 
-	expression := variableDefExp.ReplaceAllString(pattern, `(?P<_${var}>`+variableValueSyntax+`)`)
+	expression := variableDefExp.ReplaceAllString(pattern, `(?P<${var}>`+variableValueSyntax+`)`)
 
 	return regexp.Compile(expression)
 }
 
-// based upon the given path pattern, a directory filter is created. That DirectoryFilter contains the required regular expressions for each detected variable (like {{myvar}})
+// ParsePathPattern based upon the given path pattern, a directory filter is created. That DirectoryFilter contains the required regular expressions for each detected variable (like {{myvar}})
 func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets map[string] /* name of variable, like 'myvar' }}*/ uint /* index in filter.Variables, beginning with 1 */) {
 	normalized := strings.Trim(pattern, `/`)
 
@@ -514,7 +514,7 @@ func writeSubstitutionInto(character byte, to *strings.Builder) (captureAdded bo
 		to.WriteString("(\\w+)")
 	case 'v':
 		to.WriteString("(" + variableValueSyntax + ")")
-	case '?':
+	case 'A':
 		to.WriteString("(.+?)")
 	default:
 		//The given character is not a valid substitute,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ func printVersion() {
 }
 
 func main() {
+	flag.Parse()
 	configureLogrus()
 	configureTerminal()
 	configureSignals()

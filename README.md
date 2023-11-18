@@ -50,6 +50,12 @@ $ git tag x.y.z
 $ git push origin x.y.z
 ```
 
+### Running tests
+
+```bash
+make test
+```
+
 ## Changelog
 The changelog is kept in the [CHANGELOG.md](CHANGELOG.md) file.
 

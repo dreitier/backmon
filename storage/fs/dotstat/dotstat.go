@@ -97,7 +97,7 @@ func updateTimeField(content *string, targetTime *time.Time) {
 	i, err := strconv.ParseInt(*content, 10, 64)
 
 	if err != nil {
-		log.Debugf("Unable to parse '%s': %s", content, err)
+		log.Debugf("Unable to parse '%s': %s", *content, err)
 		// ignore any parsing errors
 		return
 	}

@@ -1,10 +1,10 @@
-'./backups':
+backups:
   alias: my-backups
   fuse:
   defaults:
     schedule: 0 02 * * *
   files:
-    'dump-%Y%M%D.sql':
+    dump-%Y%M%D.sql:
       alias: pgdump
       schedule: 0 1 * * *
       sort: interpolation

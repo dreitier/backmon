@@ -2,14 +2,18 @@ package backup
 
 import (
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gorhill/cronexpr"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"testing"
+	"time"
 )
 
 func Test_parseDefinitions(t *testing.T) {
+	assertion := assert.New(t)
 	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions.yaml")
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,6 +31,16 @@ func Test_parseDefinitions(t *testing.T) {
 	if defs == nil {
 		t.Error("parsed definitions object is nil")
 	}
+
+	assertion.Equal("my-backups", defs["backups"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 2 * * *"), defs["backups"].Defaults.Schedule)
+	assertion.Equal(uint64(10), defs["backups"].Defaults.RetentionCount)
+	assertion.Equal(7*24*time.Hour, defs["backups"].Defaults.RetentionAge)
+	assertion.Equal(false, defs["backups"].Defaults.Purge)
+	assertion.Equal("pgdump", defs["backups"].Files["dump-%Y%M%D.sql"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 1 * * *"), defs["backups"].Files["dump-%Y%M%D.sql"].Schedule)
+	assertion.Equal(uint64(10), defs["backups"].Files["dump-%Y%M%D.sql"].RetentionCount)
+	assertion.Equal(7*24*time.Hour, defs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
 }
 
 func Test_parseFaultyDefinitions_expectError(t *testing.T) {
@@ -154,6 +168,20 @@ func Test_parseFilenamePattern(t *testing.T) {
 
 	if captures["lower_instance"] != "zerg" {
 		t.Error("Named capture group 'lower_instance' did not match the correct patten 'zerg'")
+	}
+}
+
+func Test_parseFilenamePattern2(t *testing.T) {
+	const fileNamePattern = "%Y-%M-%D.tar.gz"
+	const fileNameMatch = "2023-11-14.tar.gz"
+
+	regex, err := ParseFilePattern(fileNamePattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !regex.MatchString(fileNameMatch) {
+		t.Error("Regex did not match a correct patten:", fileNameMatch)
 	}
 }
 

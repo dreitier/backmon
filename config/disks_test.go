@@ -35,8 +35,8 @@ exclude:
 
 	status, appliedPolicy := GetDiskStatus("a", cfg)
 
-	assertion.Equal(DISKS_POLICY_EXCLUDE, appliedPolicy)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksPolicyExclude, appliedPolicy)
+	assertion.Equal(DisksBehaviourExclude, status)
 }
 
 func Test_GetDiskStatus_GH5_UC2_1_allOthersExplicitlyIncluded(t *testing.T) {
@@ -53,13 +53,13 @@ all_others: include
 	cfg := ParseDisksSection(raw)
 
 	status, _ := GetDiskStatus("bucket-1", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksBehaviourExclude, status)
 
 	status, _ = GetDiskStatus("bucket-2", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksBehaviourInclude, status)
 
 	status, _ = GetDiskStatus("bucket-3", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksBehaviourInclude, status)
 }
 
 func Test_GetDiskStatus_GH5_UC2_2_allOthersImplicitlyIncluded(t *testing.T) {
@@ -74,13 +74,13 @@ include:
 	cfg := ParseDisksSection(raw)
 
 	status, _ := GetDiskStatus("bucket-1", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksBehaviourExclude, status)
 
 	status, _ = GetDiskStatus("bucket-2", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksBehaviourInclude, status)
 
 	status, _ = GetDiskStatus("bucket-3", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksBehaviourInclude, status)
 }
 
 func Test_GetDiskStatus_GH5_UC3_allOthersExplicitlyExcluded(t *testing.T) {
@@ -96,13 +96,13 @@ all_others: exclude
 	cfg := ParseDisksSection(raw)
 
 	status, _ := GetDiskStatus("bucket-1", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksBehaviourExclude, status)
 
 	status, _ = GetDiskStatus("bucket-2", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksBehaviourInclude, status)
 
 	status, _ = GetDiskStatus("bucket-3", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksBehaviourExclude, status)
 
 	spew.Dump(raw)
 }
@@ -121,8 +121,8 @@ all_others: exclude
 	cfg := ParseDisksSection(raw)
 
 	status, appliedPolicy := GetDiskStatus("bucket-2", cfg)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
-	assertion.Equal(DISKS_POLICY_CONFLICTING, appliedPolicy)
+	assertion.Equal(DisksBehaviourExclude, status)
+	assertion.Equal(DisksPolicyConflicting, appliedPolicy)
 }
 
 func Test_GetDiskStatus_GH6_UC1_excludedByRegex(t *testing.T) {
@@ -136,8 +136,8 @@ exclude:
 
 	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
 
-	assertion.Equal(DISKS_POLICY_EXCLUDE_BY_REGEX, appliedPolicy)
-	assertion.Equal(DISKS_BEHAVIOUR_EXCLUDE, status)
+	assertion.Equal(DisksPolicyExcludeByRegex, appliedPolicy)
+	assertion.Equal(DisksBehaviourExclude, status)
 }
 
 func Test_GetDiskStatus_GH6_UC1_includedByRegex(t *testing.T) {
@@ -151,8 +151,8 @@ include:
 
 	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
 
-	assertion.Equal(DISKS_POLICY_INCLUDE_BY_REGEX, appliedPolicy)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE, status)
+	assertion.Equal(DisksPolicyIncludeByRegex, appliedPolicy)
+	assertion.Equal(DisksBehaviourInclude, status)
 }
 
 func Test_GetDiskStatus_GH6_UC1_whenRegExpsForInclude_AND_excludeMatches_itFallsBackToDefaultBehaviour(t *testing.T) {
@@ -168,6 +168,6 @@ exclude:
 
 	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
 
-	assertion.Equal(DISKS_POLICY_CONFLICTING_BY_REGEX, appliedPolicy)
-	assertion.Equal(DISKS_BEHAVIOUR_INCLUDE /* default behaviour */, status)
+	assertion.Equal(DisksPolicyConflictingByRegex, appliedPolicy)
+	assertion.Equal(DisksBehaviourInclude /* default behaviour */, status)
 }

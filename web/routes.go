@@ -71,7 +71,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Base route to access the API Documentation.
+// BaseHandler Base route to access the API Documentation.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/api", http.StatusMovedPermanently)
 }

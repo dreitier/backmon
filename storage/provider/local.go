@@ -30,6 +30,7 @@ func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.Director
 func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint) (*fs.DirectoryInfo, error) {
 	currentSubdirectoryPath := filepath.Join(fullSubdirectoryPath, directoryName)
 	absoluteSubdirectoryPath := filepath.Join(root, currentSubdirectoryPath)
+	// TODO: fix deprecation
 	fileInfos, err := ioutil.ReadDir(absoluteSubdirectoryPath)
 
 	if err != nil {
@@ -117,7 +118,7 @@ func (c *LocalClient) Delete(disk string, file *fs.FileInfo) error {
 
 	if dotStatExists {
 		// don't throw any errors
-		os.Remove(possibleDotStatFilePath)
+		_ = os.Remove(possibleDotStatFilePath)
 	}
 
 	return err

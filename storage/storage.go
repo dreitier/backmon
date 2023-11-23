@@ -220,7 +220,7 @@ func (list FileGroup) Swap(i int, j int) {
 
 // END
 
-func (list FileGroup) Purge(fileDef *backup.BackupFileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
+func (list FileGroup) Purge(fileDef *backup.FileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
 	threshold := time.Now().UTC().Add(-fileDef.RetentionAge)
 	young = uint64(sort.Search(len(list), func(i int) bool { return list[i].Time.Before(threshold) }))
 
@@ -479,7 +479,7 @@ func assembleFromTemplate(template []string, varDefs []backup.VariableDefinition
 
 func collectMatchingFiles(
 	files []*fs.FileInfo,
-	fileDef *backup.BackupFileDefinition,
+	fileDef *backup.FileDefinition,
 	vars []string,
 	folderTime *backup.Timestamp,
 	matches FileGroup,
@@ -525,10 +525,10 @@ func collectMatchingFiles(
 
 			// first of, we have to identify which file attribute to use as a baseline for interpolated timestamps
 			switch fileDef.SortBy {
-			case backup.SORT_BY_BORN_AT:
+			case backup.SortByBornAt:
 				useDefaultsFromTime = &file.BornAt
 				break
-			case backup.SORT_BY_ARCHIVED_AT:
+			case backup.SortByArchivedAt:
 				useDefaultsFromTime = &file.ArchivedAt
 				break
 			// default includes "interpolation": we can't reference an interpolation time as default because it's not assigned yet
@@ -543,13 +543,13 @@ func collectMatchingFiles(
 			file.InterpolatedTimestamp = &interpolatedTimestamp
 
 			switch fileDef.SortBy {
-			case backup.SORT_BY_BORN_AT:
+			case backup.SortByBornAt:
 				sortByTime = &file.BornAt
 				break
-			case backup.SORT_BY_MODIFIED_AT:
+			case backup.SortByModifiedAt:
 				sortByTime = &file.ModifiedAt
 				break
-			case backup.SORT_BY_ARCHIVED_AT:
+			case backup.SortByArchivedAt:
 				sortByTime = &file.ArchivedAt
 				break
 			// by default we are using the interpolated timestamp

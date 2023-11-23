@@ -11,14 +11,14 @@ type GlobalConfiguration struct {
 	updateInterval time.Duration
 }
 
-func (self *GlobalConfiguration) LogLevel() log.Level {
-	return self.logLevel
+func (config *GlobalConfiguration) LogLevel() log.Level {
+	return config.logLevel
 }
 
-func (self *GlobalConfiguration) HttpPort() int {
-	return self.httpPort
+func (config *GlobalConfiguration) HttpPort() int {
+	return config.httpPort
 }
 
-func (self *GlobalConfiguration) UpdateInterval() time.Duration {
-	return self.updateInterval
+func (config *GlobalConfiguration) UpdateInterval() time.Duration {
+	return config.updateInterval
 }

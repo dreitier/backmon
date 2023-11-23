@@ -28,8 +28,9 @@ func StartServer() {
 		// @see https://gist.github.com/denji/12b3a568f092ab951456
 		if userDefinedTlsConfiguration.IsStrict {
 			tlsServerConfig = &tls.Config{
-				MinVersion:               tls.VersionTLS12,
-				CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+				MinVersion:       tls.VersionTLS12,
+				CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+				// TODO: fix deprecation
 				PreferServerCipherSuites: true,
 				CipherSuites: []uint16{
 					tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -41,7 +42,7 @@ func StartServer() {
 		}
 
 		// provide an empty hashmap to disable any other TLS ciphers
-		restrictedProtos := make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+		restrictedProtos := make(map[string]func(*http.Server, *tls.Conn, http.Handler))
 		tlsNextProto = restrictedProtos
 	}
 
@@ -60,7 +61,7 @@ func StartServer() {
 	if userDefinedTlsConfiguration != nil {
 		log.Error(srv.ListenAndServeTLS(userDefinedTlsConfiguration.CertificatePath, userDefinedTlsConfiguration.PrivateKeyPath))
 	} else {
-		// if no TLS configuration is present, work in unecrypted mode
+		// if no TLS configuration is present, work in unencrypted mode
 		log.Error(srv.ListenAndServe())
 	}
 }

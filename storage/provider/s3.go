@@ -63,6 +63,7 @@ func getClient(c *S3Client) (*s3.S3, error) {
 	return c.s3Client, nil
 }
 
+// GetFileNames TODO: do something smart with unused parameter maxDepth
 func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
 	svc, err := getClient(c)
 	if err != nil {
@@ -147,7 +148,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			s3PathToStatFile := parentPath + "/" + fileName
 			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile)
 
-			// TODO make temp directory configurable
+			// TODO fix deprecation
 			tempFile, err := ioutil.TempFile(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
 
 			if err != nil {
@@ -160,9 +161,14 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			// .stat files are registered for later examination
 			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
 			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
+			// TODO: fix deprecation
 			byteStreamContent, _ := ioutil.ReadAll(s3OutObject.Body)
 
-			tempFile.Write(byteStreamContent)
+			_, err = tempFile.Write(byteStreamContent)
+			if err != nil {
+				log.Errorf("failed to write to file: %s", err)
+				return
+			}
 			(*dotStatFiles)[s3PathToNonStatFile] = localAbsolutePath
 
 			continue
@@ -201,7 +207,7 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 	svc, err := getClient(c)
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not acquire S3 client instance: %s", err)
+		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 
 	if c.AutoDiscoverDisks {
@@ -220,7 +226,7 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.S3) ([]string, erro
 	result, err := svc.ListBuckets(&s3.ListBucketsInput{})
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to list S3 disks by auto discovery: %s", err)
+		return nil, fmt.Errorf("failed to list S3 disks by auto discovery: %s", err)
 	}
 
 	for _, bucketAsDisk := range result.Buckets {
@@ -238,7 +244,7 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
 
 	log.Info("Finding disks based upon disks.include configuration parameter...")
 
-	for keyAsBucketName, _ := range config.GetInstance().Disks().GetIncludedDisks() {
+	for keyAsBucketName := range config.GetInstance().Disks().GetIncludedDisks() {
 		if c.hasAccessToBucket(svc, &keyAsBucketName) {
 			r = append(r, keyAsBucketName)
 		}
@@ -285,7 +291,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	fullName := file.Parent + "/" + file.Name
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
 	out, err := svc.DeleteObject(&delObjectInput)
-	fmt.Sprint(out)
+	_ = fmt.Sprint(out)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete object %s from disk %s: %s", fullName, disk, err)

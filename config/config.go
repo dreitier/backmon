@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type configuration struct {
+type Configuration struct {
 	global       *GlobalConfiguration
 	http         *HttpConfiguration
 	downloads    *DownloadsConfiguration
@@ -21,7 +21,7 @@ type configuration struct {
 }
 
 var (
-	instance                    *configuration
+	instance                    *Configuration
 	once                        sync.Once
 	configSearchDirectories     []string
 	hasGlobalDebugEnabled       bool
@@ -58,23 +58,23 @@ func HasGlobalDebugEnabled() bool {
 	return hasGlobalDebugEnabled
 }
 
-func GetInstance() *configuration {
+func GetInstance() *Configuration {
 	once.Do(func() {
-		instance = &configuration{}
+		instance = &Configuration{}
 		initConfig()
 	})
 	return instance
 }
 
-func (c *configuration) Global() *GlobalConfiguration {
+func (c *Configuration) Global() *GlobalConfiguration {
 	return c.global
 }
 
-func (c *configuration) Environments() []*EnvironmentConfiguration {
+func (c *Configuration) Environments() []*EnvironmentConfiguration {
 	return c.environments
 }
 
-func (c *configuration) TotalEnvironments() float64 {
+func (c *Configuration) TotalEnvironments() float64 {
 	if nil == c.Environments() {
 		return float64(0)
 	}
@@ -82,15 +82,15 @@ func (c *configuration) TotalEnvironments() float64 {
 	return float64(len(c.Environments()))
 }
 
-func (c *configuration) Downloads() *DownloadsConfiguration {
+func (c *Configuration) Downloads() *DownloadsConfiguration {
 	return c.downloads
 }
 
-func (c *configuration) Http() *HttpConfiguration {
+func (c *Configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
-func (c *configuration) Disks() *DisksConfiguration {
+func (c *Configuration) Disks() *DisksConfiguration {
 	return c.disks
 }
 
@@ -119,7 +119,9 @@ func initConfig() {
 		log.Fatal("Could not find any configuration file")
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
 	cfg, err := Parse(file)
 	if err != nil {
@@ -133,7 +135,7 @@ func initConfig() {
 	instance.disks = ParseDisksSection(cfg.Sub("disks"))
 }
 
-// Parses `disks:` section
+// ParseDisksSection Parses `disks:` section
 func ParseDisksSection(cfg Raw) *DisksConfiguration {
 	var r *DisksConfiguration
 
@@ -179,7 +181,7 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 // Parses `disks.include` and `disks.exclude`
 func parseIncludeExcludeSection(rawDiskNames []string) ( /*diskNames */ map[string]SingleDiskConfiguration /* diskRegExps */, []SingleDiskConfiguration) {
 	var diskNames = make(map[string]SingleDiskConfiguration)
-	var diskRegExps = []SingleDiskConfiguration{}
+	var diskRegExps []SingleDiskConfiguration
 
 	for _, diskName := range rawDiskNames {
 		singleDiskConfiguration, err := NewSingleDiskConfiguration(diskName)
@@ -361,11 +363,11 @@ func parseEnvironmentsSection(cfg Raw) []*EnvironmentConfiguration {
 
 func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration, error) {
 	if envName == "" {
-		return nil, errors.New("Missing environment name")
+		return nil, errors.New("missing environment name")
 	}
 
 	if cfg == nil || envName == "" {
-		return nil, errors.New("Missing environment configuration entries")
+		return nil, errors.New("missing environment configuration entries")
 	}
 
 	var c *ClientConfiguration
@@ -381,7 +383,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	if cfg.Has("path") {
 		path := cfg.String("path")
 		if path == "" {
-			return nil, errors.New("Parameter 'path' has been set, but is empty")
+			return nil, errors.New("parameter 'path' has been set, but is empty")
 		}
 
 		c = &ClientConfiguration{

@@ -20,8 +20,6 @@ var (
 	once     sync.Once
 )
 
-const DiskInfoRoute = "disk_info_route"
-const LatestFileRoute = "latest_file_route"
 const HttpMethodGet = "GET"
 
 func GetInstance() *RouteConfiguration {

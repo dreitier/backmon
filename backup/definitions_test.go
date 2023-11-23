@@ -29,6 +29,25 @@ func Test_parseDefinitions(t *testing.T) {
 	}
 }
 
+func Test_parseFaultyDefinitions_expectError(t *testing.T) {
+	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions_faulty.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func(definitionsFile *os.File) {
+		_ = definitionsFile.Close()
+	}(definitionsFile)
+
+	reader := io.Reader(definitionsFile)
+
+	_, err = ParseRawDefinitions(reader)
+
+	if err == nil {
+		t.Error("parsed definitions file contains an error, failure was expected")
+	}
+}
+
 func Test_parseDirectoryPattern(t *testing.T) {
 	const diskNamePattern = "/backup.to/{{service}}/inst_{{instance}}/"
 	const diskNameMatch = "/backup.to/test#3/inst_a~1/"

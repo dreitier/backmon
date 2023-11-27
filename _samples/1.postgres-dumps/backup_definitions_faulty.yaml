@@ -2,9 +2,7 @@ backups:
   alias: my-backups
   fuse:
   defaults:
-    schedule: 0 2 * * *
-    retention-count: 10
-    retention-age: 7d
+    schedule: 0 02 * * *
   files:
     dump-%Y%M%D.sql:
       alias: pgdump

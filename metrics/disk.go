@@ -7,6 +7,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	LabelNameDir   = "dir"
+	LabelNameFile  = "file"
+	LabelNameGroup = "group"
+)
+
 type DiskMetric struct {
 	status                       prometheus.Gauge
 	fileCountExpected            *prometheus.GaugeVec
@@ -42,8 +48,8 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "The amount of backup files expected to be present in this group.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
+			LabelNameDir,
+			LabelNameFile,
 		}),
 		fileCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -52,9 +58,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "The amount of backup files present in this group.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -64,8 +70,8 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "The maximum age (in seconds) that any file in this group should reach.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
+			LabelNameDir,
+			LabelNameFile,
 		}),
 		fileYoungCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -74,9 +80,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "The amount of backup files in this group that are younger than the maximum age (file_age_aim_seconds).",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestFileCreationExpectedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -86,8 +92,8 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group should have occurred.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
+			LabelNameDir,
+			LabelNameFile,
 		}),
 		latestFileCreatedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -97,9 +103,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group was created.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestFileCreationDuration: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -108,9 +114,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Describes how long it took to create the backup file in seconds",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestFileBornAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -119,9 +125,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Unix timestamp on which the latest file has been initially created",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestFileModifiedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -130,9 +136,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Unix timestamp on which the latest file has been modified",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestFileArchivedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -141,9 +147,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Unix timestamp on which the latest file has been archived",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 		latestSize: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -152,9 +158,9 @@ func NewDisk(diskName string) *DiskMetric {
 			Help:        "Size (in bytes) of the latest backup in the corresponding file group.",
 			ConstLabels: presetLabels,
 		}, []string{
-			"dir",
-			"file",
-			"group",
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
 		}),
 	}
 	registry.MustRegister(disk.status)
@@ -225,9 +231,9 @@ func (b *DiskMetric) UpdateFileCounts(dir string, file string, group string, pre
 
 	if present == 0 {
 		labels := make(map[string]string)
-		labels["dir"] = dir
-		labels["file"] = file
-		labels["group"] = group
+		labels[LabelNameDir] = dir
+		labels[LabelNameFile] = file
+		labels[LabelNameGroup] = group
 
 		b.deleteLatestFileLabels(labels)
 	}
@@ -253,9 +259,9 @@ func (b *DiskMetric) UpdateLatestFile(dir string, file string, group string, fil
 
 func (b *DiskMetric) DropFile(dir string, file string, group string) {
 	labels := make(map[string]string)
-	labels["dir"] = dir
-	labels["file"] = file
-	labels["group"] = group
+	labels[LabelNameDir] = dir
+	labels[LabelNameFile] = file
+	labels[LabelNameGroup] = group
 
 	b.fileCount.Delete(labels)
 	b.fileYoungCount.Delete(labels)

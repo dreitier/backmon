@@ -147,17 +147,17 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 	const paramAllOthersValueExclude = paramExclude
 
 	// #5:UC2: include is the default behaviour
-	allOthers := DISKS_BEHAVIOUR_INCLUDE
+	allOthers := DisksBehaviourInclude
 
 	if cfg.Has(paramAllOthers) {
 		rawAllOthers := cfg.String(paramAllOthers)
 
 		switch rawAllOthers {
 		case paramAllOthersValueInclude:
-			allOthers = DISKS_BEHAVIOUR_INCLUDE
+			allOthers = DisksBehaviourInclude
 			break
 		case paramAllOthersValueExclude:
-			allOthers = DISKS_BEHAVIOUR_EXCLUDE
+			allOthers = DisksBehaviourExclude
 			break
 		default:
 			log.Warnf("Unknown value for %s. Using 'include' as default value", paramAllOthers)

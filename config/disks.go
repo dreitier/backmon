@@ -8,26 +8,26 @@ import (
 
 // behaviour enum
 const (
-	DISKS_BEHAVIOUR_INCLUDE = iota
-	DISKS_BEHAVIOUR_EXCLUDE = iota
+	DisksBehaviourInclude = iota
+	DisksBehaviourExclude = iota
 )
 
 // applied policy enum
 const (
-	DISKS_POLICY_INCLUDE              = "explicit_include_policy"
-	DISKS_POLICY_INCLUDE_BY_REGEX     = "explicit_include_by_regex_policy"
-	DISKS_POLICY_EXCLUDE              = "explicit_exclude_policy"
-	DISKS_POLICY_EXCLUDE_BY_REGEX     = "explicit_exclude_by_regex_policy"
-	DISKS_POLICY_CONFLICTING          = "unallowed_definition_in_include_and_exclude_policy"
-	DISKS_POLICY_CONFLICTING_BY_REGEX = "unallowed_definition_in_include_or_exclude_and_contradicting_regexp"
-	DISKS_POLICY_NO_MATCH_FALLBACK    = "not_matching_fallback_to_all_others"
+	DisksPolicyInclude            = "explicit_include_policy"
+	DisksPolicyIncludeByRegex     = "explicit_include_by_regex_policy"
+	DisksPolicyExclude            = "explicit_exclude_policy"
+	DisksPolicyExcludeByRegex     = "explicit_exclude_by_regex_policy"
+	DisksPolicyConflicting        = "unallowed_definition_in_include_and_exclude_policy"
+	DisksPolicyConflictingByRegex = "unallowed_definition_in_include_or_exclude_and_contradicting_regexp"
+	DisksPolicyNoMatchFallback    = "not_matching_fallback_to_all_others"
 )
 
-// this is the transformed outcome of the `disks:` section
+// DisksConfiguration this is the transformed outcome of the `disks:` section
 type DisksConfiguration struct {
 	// simple disknames can be identified through a lookup table
 	include map[string]SingleDiskConfiguration
-	// for regexps we cannot use a lookup table but have execute each regex
+	// for regexps, we cannot use a lookup table but have execute each regex
 	includeRegExps []SingleDiskConfiguration
 	exclude        map[string]SingleDiskConfiguration
 	excludeRegExps []SingleDiskConfiguration
@@ -42,7 +42,7 @@ type SingleDiskConfiguration struct {
 	IsRegularExpression bool
 }
 
-// Create a new SingleDiskConfiguration
+// NewSingleDiskConfiguration Create a new SingleDiskConfiguration
 // @return error if the diskNameOrRegExp is based upon a regex ('/someregex/')
 func NewSingleDiskConfiguration(diskNameOrRegExp string) (*SingleDiskConfiguration, error) {
 	// we are checking if the given diskName to include or exclude is a regular expression like "/.*/"
@@ -65,15 +65,15 @@ func NewSingleDiskConfiguration(diskNameOrRegExp string) (*SingleDiskConfigurati
 	return r, nil
 }
 
-func (self *DisksConfiguration) GetIncludedDisks() map[string]SingleDiskConfiguration {
-	return self.include
+func (diskConfig *DisksConfiguration) GetIncludedDisks() map[string]SingleDiskConfiguration {
+	return diskConfig.include
 }
 
-// Return true if the given disk is defined as "included" through some policy
-func (self *DisksConfiguration) IsDiskIncluded(diskName string) bool {
-	status, appliedPolicy := GetDiskStatus(diskName, self)
+// IsDiskIncluded Return true if the given disk is defined as "included" through some policy
+func (diskConfig *DisksConfiguration) IsDiskIncluded(diskName string) bool {
+	status, appliedPolicy := GetDiskStatus(diskName, diskConfig)
 
-	if status == DISKS_BEHAVIOUR_EXCLUDE {
+	if status == DisksBehaviourExclude {
 		log.Debugf("Disk %s is excluded (%s)", diskName, appliedPolicy)
 
 		return false
@@ -105,7 +105,7 @@ func hasAtLeastOneMatch(diskName string, possibleConfigsWithRegExps []SingleDisk
 	return false
 }
 
-// Calculate the disk's status based upon the defined policies
+// GetDiskStatus Calculate the disk's status based upon the defined policies
 // @return (status, appliedPolicy)
 func GetDiskStatus(diskName string, disksConfiguration *DisksConfiguration) ( /* status */ int /* appliedPolicy */, string) {
 	_, isExplicitlyIncluded := disksConfiguration.include[diskName]
@@ -118,33 +118,33 @@ func GetDiskStatus(diskName string, disksConfiguration *DisksConfiguration) ( /*
 
 	// include
 	if isExplicitlyIncluded && !isExcluded {
-		return DISKS_BEHAVIOUR_INCLUDE, DISKS_POLICY_INCLUDE
+		return DisksBehaviourInclude, DisksPolicyInclude
 	}
 
 	// included by regex
 	if isIncludedByRegex && !isExcluded {
-		return DISKS_BEHAVIOUR_INCLUDE, DISKS_POLICY_INCLUDE_BY_REGEX
+		return DisksBehaviourInclude, DisksPolicyIncludeByRegex
 	}
 
 	// exclude
 	if isExplicitlyExcluded && !isIncluded {
-		return DISKS_BEHAVIOUR_EXCLUDE, DISKS_POLICY_EXCLUDE
+		return DisksBehaviourExclude, DisksPolicyExclude
 	}
 
 	// excluded by regex
 	if isExcludedByRegex && !isIncluded {
-		return DISKS_BEHAVIOUR_EXCLUDE, DISKS_POLICY_EXCLUDE_BY_REGEX
+		return DisksBehaviourExclude, DisksPolicyExcludeByRegex
 	}
 
 	if isExplicitlyIncluded && isExplicitlyExcluded {
-		return disksConfiguration.behaviourForAllOthers, DISKS_POLICY_CONFLICTING
+		return disksConfiguration.behaviourForAllOthers, DisksPolicyConflicting
 	}
 
 	// disk has been defined in both `include` and `exclude` sections
 	if isIncluded && isExcluded {
-		return disksConfiguration.behaviourForAllOthers, DISKS_POLICY_CONFLICTING_BY_REGEX
+		return disksConfiguration.behaviourForAllOthers, DisksPolicyConflictingByRegex
 	}
 
 	// this applies to a disk which has no match
-	return disksConfiguration.behaviourForAllOthers, DISKS_POLICY_NO_MATCH_FALLBACK
+	return disksConfiguration.behaviourForAllOthers, DisksPolicyNoMatchFallback
 }

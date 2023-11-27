@@ -301,7 +301,8 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 		findMatchingDirs(root, dirDef, 0, 0, vars, fileGroups)
 
 		if len(fileGroups) == 0 {
-			log.Warnf("Could not find any file groups. Either the root directory is wrong or no files are matching the defined pattern")
+			log.Warnf("Could not find any file groups in directory %s below root %s. Either the root directory is "+
+				"wrong or no files are matching the defined pattern", dirDef.Alias, root.Name)
 		}
 
 		for _, fileDef := range dirDef.Files {

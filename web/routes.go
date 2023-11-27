@@ -20,8 +20,6 @@ var (
 	once     sync.Once
 )
 
-const DiskInfoRoute = "disk_info_route"
-const LatestFileRoute = "latest_file_route"
 const HttpMethodGet = "GET"
 
 func GetInstance() *RouteConfiguration {
@@ -76,7 +74,7 @@ func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/api", http.StatusMovedPermanently)
 }
 
-func EnvHandler(w http.ResponseWriter, r *http.Request) {
+func EnvHandler(w http.ResponseWriter, _ *http.Request) {
 	GetDisks(w)
 	//_, _ = w.Write([]byte(`<h1>Available Disks:</h1>`))
 	//for _, disk := range response {

@@ -29,7 +29,7 @@ func ApplyDotStatValuesRecursively(dotStatFileSources map[string] /* absolute pa
 	}
 }
 
-// For the provided map, each .stat file for an existing backup is parsed and then applied to the backup's stat (born_at, modified_at, archived_at) attributes
+// ApplyDotStatValues For the provided map, each .stat file for an existing backup is parsed and then applied to the backup's stat (born_at, modified_at, archived_at) attributes
 func ApplyDotStatValues(dotStatFileSources map[string] /* absolute path of file */ string /*absolute path to .stat file*/, files []*fs.FileInfo) {
 	for _, fileInfo := range files {
 		absolutePathToNonStatFile := fileInfo.Parent + "/" + fileInfo.Name
@@ -49,17 +49,17 @@ func ApplyDotStatValues(dotStatFileSources map[string] /* absolute path of file 
 	}
 }
 
-// Appends the `.stat` suffix to the provide file path
+// ToDotStatPath Appends the `.stat` suffix to the provide file path
 func ToDotStatPath(pathToOriginalFile string) string {
 	return pathToOriginalFile + DotStatFileSuffix
 }
 
-// Return true if the file name or path has a `.stat` suffix
+// IsStatFile Return true if the file name or path has a `.stat` suffix
 func IsStatFile(fileName string) bool {
 	return strings.HasSuffix(fileName, DotStatFileSuffix)
 }
 
-// Removes the `.stat` suffix from the provided file path if present
+// RemoveDotStatSuffix Removes the `.stat` suffix from the provided file path if present
 func RemoveDotStatSuffix(pathToDotStatFile string) string {
 	if strings.HasSuffix(pathToDotStatFile, DotStatFileSuffix) {
 		pathToDotStatFile = pathToDotStatFile[:len(pathToDotStatFile)-len(DotStatFileSuffix)]
@@ -70,6 +70,7 @@ func RemoveDotStatSuffix(pathToDotStatFile string) string {
 
 // From the provided YAML file the keys are read an then accordingly applied to the file's stat attributes (BornAt, ModifiedAt, ArchivedAt)
 func updateStatAttributesFromYamlValues(fileInfo *fs.FileInfo, pathToStatFile string) (*DotStatYaml, error) {
+	// TODO: fix deprecation
 	buf, err := ioutil.ReadFile(pathToStatFile)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func updateStatAttributesFromYamlValues(fileInfo *fs.FileInfo, pathToStatFile st
 	err = yaml.Unmarshal(buf, c)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to unmarshal: %v", err)
+		return nil, fmt.Errorf("unable to unmarshal: %v", err)
 	}
 
 	updateTimeField(c.BornAt, &fileInfo.BornAt)

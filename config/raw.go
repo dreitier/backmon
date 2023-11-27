@@ -36,7 +36,7 @@ var (
 
 type Raw map[string]interface{}
 
-// Provide a YAML string and unmarshal it
+// ParseFromString Provide a YAML string and unmarshal it
 func ParseFromString(content string) (Raw, error) {
 	var out map[string]interface{}
 	if err := yaml.Unmarshal([]byte(content), &out); err != nil {

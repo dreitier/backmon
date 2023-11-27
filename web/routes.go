@@ -11,12 +11,12 @@ import (
 	"sync"
 )
 
-type routeConfiguration struct {
+type RouteConfiguration struct {
 	endpointsRouter *mux.Router
 }
 
 var (
-	instance *routeConfiguration
+	instance *RouteConfiguration
 	once     sync.Once
 )
 
@@ -24,9 +24,9 @@ const DiskInfoRoute = "disk_info_route"
 const LatestFileRoute = "latest_file_route"
 const HttpMethodGet = "GET"
 
-func GetInstance() *routeConfiguration {
+func GetInstance() *RouteConfiguration {
 	once.Do(func() {
-		instance = &routeConfiguration{
+		instance = &RouteConfiguration{
 			endpointsRouter: mux.NewRouter().UseEncodedPath(),
 		}
 
@@ -71,7 +71,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Base route to access the API Documentation.
+// BaseHandler Base route to access the API Documentation.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/api", http.StatusMovedPermanently)
 }

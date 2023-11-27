@@ -16,16 +16,16 @@ import (
 
 const (
 	variableValueSyntax = `[^\\./]+?`
-	// The substitution marker must be an ASCII character and
+	// SubstitutionMarker The substitution marker must be an ASCII character and
 	// must not be a regex meta character
 	SubstitutionMarker = '%'
 )
 
 const (
-	SORT_BY_INTERPOLATION = iota
-	SORT_BY_BORN_AT       = iota
-	SORT_BY_MODIFIED_AT   = iota
-	SORT_BY_ARCHIVED_AT   = iota
+	SortByInterpolation = iota
+	SortByBornAt        = iota
+	SortByModifiedAt    = iota
+	SortByArchivedAt    = iota
 )
 
 // noinspection RegExpRedundantEscape
@@ -112,8 +112,8 @@ func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 	return nil
 }
 
-func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*BackupFileDefinition {
-	files := make([]*BackupFileDefinition, 0, len(raw))
+func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*FileDefinition {
+	files := make([]*FileDefinition, 0, len(raw))
 	aliases := make(map[string]empty)
 
 	for rawPattern, rawFile := range raw {
@@ -158,7 +158,7 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 
 		aliases[alias] = empty{}
 
-		file := &BackupFileDefinition{
+		file := &FileDefinition{
 			Pattern:         rawPattern,
 			Filter:          pattern,
 			VariableMapping: variables,
@@ -178,10 +178,10 @@ func parseFiles(raw map[string]*RawFile, variableOffsets map[string]uint) []*Bac
 }
 
 func parseVariables(pattern *regexp.Regexp, variableOffsets map[string]uint) ([]VariableReference, error) {
-	subexpNames := pattern.SubexpNames()
-	variables := make([]VariableReference, len(subexpNames))
+	subExpNames := pattern.SubexpNames()
+	variables := make([]VariableReference, len(subExpNames))
 
-	for i, capture := range subexpNames {
+	for i, capture := range subExpNames {
 		op := ""
 
 		if !strings.HasPrefix(capture, "_") {
@@ -217,18 +217,18 @@ func parseVariables(pattern *regexp.Regexp, variableOffsets map[string]uint) ([]
 func parseSortBy(op string) int {
 	switch op {
 	case "born_at":
-		return SORT_BY_BORN_AT
+		return SortByBornAt
 	case "modified_at":
-		return SORT_BY_MODIFIED_AT
+		return SortByModifiedAt
 	case "archived_at":
-		return SORT_BY_ARCHIVED_AT
+		return SortByArchivedAt
 	case "interpolation":
-		return SORT_BY_INTERPOLATION
+		return SortByInterpolation
 	case "":
-		return SORT_BY_INTERPOLATION
+		return SortByInterpolation
 	default:
 		log.Warnf("Unknown 'sort' parameter '%s', defaulting to 'interpolation'", op)
-		return SORT_BY_INTERPOLATION
+		return SortByInterpolation
 	}
 }
 
@@ -387,7 +387,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 
 // Based upon the given `pattern`, it finds each variable definition like 'subdir1/{{myvar}}'.
 // @return captures = ['myvar']
-// @return leftovers = ['subdir1/', '']
+// @return leftovers = ['subdir1/', ”]
 func splitPattern(pattern string) (captures []string, leftovers []string) {
 	if pattern == "" {
 		return nil, nil
@@ -544,7 +544,7 @@ type Directory struct {
 	Alias        string
 	SafeAlias    string
 	Filter       DirectoryFilter
-	Files        []*BackupFileDefinition
+	Files        []*FileDefinition
 	ActiveGroups []string
 }
 
@@ -590,7 +590,7 @@ type VariableDefinition struct {
 	Fuse   bool
 }
 
-type BackupFileDefinition struct {
+type FileDefinition struct {
 	Pattern         string
 	Filter          *regexp.Regexp
 	VariableMapping []VariableReference
@@ -603,7 +603,7 @@ type BackupFileDefinition struct {
 	RetentionAge    time.Duration
 }
 
-func (file *BackupFileDefinition) MarshalJSON() ([]byte, error) {
+func (file *FileDefinition) MarshalJSON() ([]byte, error) {
 	return json.Marshal(file.Alias)
 }
 

@@ -108,7 +108,7 @@ func configureSignals() {
 	signal.Notify(c, syscall.SIGHUP)
 
 	go func() {
-		for _ = range c {
+		for range c {
 			log.Printf("Got HUP signal, reloading ...")
 			storage.UpdateDiskInfo()
 		}

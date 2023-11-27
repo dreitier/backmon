@@ -4,18 +4,6 @@ import (
 	"strings"
 )
 
-func LegalAlias(alias string) bool {
-	if alias == "" {
-		return false
-	}
-	for b := range alias {
-		if !isLegalInUrl(byte(b)) {
-			return false
-		}
-	}
-	return true
-}
-
 func MakeLegalAlias(text string) (string, bool) {
 	if len(text) == 0 {
 		return "%00", false
@@ -24,7 +12,7 @@ func MakeLegalAlias(text string) (string, bool) {
 	var i int
 
 	for i = 0; i < len(text); i++ {
-		if !isLegalInUrl(text[i]){
+		if !isLegalInUrl(text[i]) {
 			break
 		}
 	}
@@ -33,21 +21,21 @@ func MakeLegalAlias(text string) (string, bool) {
 		//No illegal characters
 		return text, true
 	}
-	
+
 	escaped := strings.Builder{}
 	escaped.WriteString(text[:i])
 	legal := true
-	
+
 	for ; i < len(text); i++ {
-		if isLegalInUrl(text[i]){
+		if isLegalInUrl(text[i]) {
 			escaped.WriteByte(text[i])
 			continue
 		}
-		
+
 		if text[i] != ' ' {
 			legal = false
 		}
-		
+
 		escaped.WriteByte('%')
 		hi, lo := toHex(text[i])
 		escaped.WriteByte(hi)

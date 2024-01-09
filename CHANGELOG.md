@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.0] - 2024-01-09
+## [2.2.0] - 2024-01-09
 ### Changed
 - BREAKING: Changed global config file section `disks` to be environment specific (#29). You __have__ to update your configuration file accordingly.
 

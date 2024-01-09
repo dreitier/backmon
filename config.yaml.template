@@ -14,16 +14,15 @@ http:
 downloads: 
   enabled: false
 
-disks:
-  include:
-    - my-bucket-1
-  exclude:
-    - my-secret-bucket-2
-    - "/allbucketswith-.*-regex/"
-  all_others: exclude
-
 environments:
   aws-test-environment:
+  disks:
+    include:
+      - my-bucket-1
+    exclude:
+      - my-secret-bucket-2
+      - "/allbucketswith-.*-regex/"
+    all_others: exclude
     access_key_id: AWS_ACCESS_KEY_1
     secret_access_key: AWS_SECRET_ACCESS_KEY_1
     region: eu-central-1

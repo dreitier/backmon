@@ -44,7 +44,7 @@ type clientData struct {
 	Disks              map[string]*DiskData
 }
 
-func (client *clientData) updateDiskInfo() error {
+func (client *clientData) updateDiskInfo(environmentName string) error {
 	diskNames, err := client.Client.GetDiskNames()
 	if err != nil {
 		client.dropAllDisks()
@@ -73,7 +73,21 @@ func (client *clientData) updateDiskInfo() error {
 
 	// add disks that are new on the client to the map
 	for _, diskName := range diskNames {
-		if !config.GetInstance().Disks().IsDiskIncluded(diskName) {
+		var environment *config.EnvironmentConfiguration
+		for _, env := range config.GetInstance().Environments() {
+			if env.Name == environmentName {
+				environment = env
+				break
+			}
+		}
+
+		if environment == nil {
+			log.Errorf("Could not find environment with name %s", environmentName)
+			client.dropAllDisks()
+			return errors.New("failed to update disks config for client")
+		}
+
+		if !environment.Client.Disks.IsDiskIncluded(diskName) {
 			continue
 		}
 
@@ -258,7 +272,7 @@ func UpdateDiskInfo() {
 	for environmentName, client := range clients {
 		log.Debugf("[env:%s] Updating disks", environmentName)
 
-		if err := client.updateDiskInfo(); err != nil {
+		if err := client.updateDiskInfo(environmentName); err != nil {
 			log.Errorf("[env:%s] Could not retrieve disk names from client: %v", environmentName, err)
 			continue
 		}

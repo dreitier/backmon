@@ -25,7 +25,7 @@ const (
 
 // DisksConfiguration this is the transformed outcome of the `disks:` section
 type DisksConfiguration struct {
-	// simple disknames can be identified through a lookup table
+	// simple disk names can be identified through a lookup table
 	include map[string]SingleDiskConfiguration
 	// for regexps, we cannot use a lookup table but have execute each regex
 	includeRegExps []SingleDiskConfiguration

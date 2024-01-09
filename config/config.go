@@ -16,7 +16,6 @@ type Configuration struct {
 	global       *GlobalConfiguration
 	http         *HttpConfiguration
 	downloads    *DownloadsConfiguration
-	disks        *DisksConfiguration
 	environments []*EnvironmentConfiguration
 }
 
@@ -90,10 +89,6 @@ func (c *Configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
-func (c *Configuration) Disks() *DisksConfiguration {
-	return c.disks
-}
-
 func initConfig() {
 	var file *os.File = nil
 	var err error = nil
@@ -132,7 +127,6 @@ func initConfig() {
 	instance.http = parseHttpSection(cfg.Sub("http"))
 	instance.downloads = parseDownloadsSection(cfg.Sub("downloads"))
 	instance.environments = parseEnvironmentsSection(cfg.Sub("environments"))
-	instance.disks = ParseDisksSection(cfg.Sub("disks"))
 }
 
 // ParseDisksSection Parses `disks:` section
@@ -402,8 +396,14 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		}
 
 		autoDiscoverDisks := true
+		var disks *DisksConfiguration
+
 		if cfg.Has(paramAutoDiscoverDisks) {
 			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
+		}
+
+		if !autoDiscoverDisks {
+			disks = ParseDisksSection(cfg.Sub("disks"))
 		}
 
 		c = &ClientConfiguration{
@@ -415,6 +415,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			Endpoint:          cfg.String(paramEndpoint),
 			Token:             cfg.String(paramToken),
 			AutoDiscoverDisks: autoDiscoverDisks,
+			Disks:             disks,
 		}
 	}
 

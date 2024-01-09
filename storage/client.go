@@ -25,6 +25,7 @@ func NewClient(config *config.ClientConfiguration) Client {
 			ForcePathStyle:    config.ForcePathStyle,
 			Token:             config.Token,
 			AutoDiscoverDisks: config.AutoDiscoverDisks,
+			Disks:             config.Disks,
 		}
 	}
 

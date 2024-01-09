@@ -16,4 +16,5 @@ type ClientConfiguration struct {
 	ForcePathStyle    bool
 	Token             string
 	AutoDiscoverDisks bool
+	Disks             *DisksConfiguration
 }

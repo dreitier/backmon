@@ -27,6 +27,7 @@ type S3Client struct {
 	EnvName           string
 	s3Client          *s3.S3
 	AutoDiscoverDisks bool
+	Disks             *config.DisksConfiguration
 }
 
 func getClient(c *S3Client) (*s3.S3, error) {
@@ -244,7 +245,7 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
 
 	log.Info("Finding disks based upon disks.include configuration parameter...")
 
-	for keyAsBucketName := range config.GetInstance().Disks().GetIncludedDisks() {
+	for keyAsBucketName := range c.Disks.GetIncludedDisks() {
 		if c.hasAccessToBucket(svc, &keyAsBucketName) {
 			r = append(r, keyAsBucketName)
 		}
@@ -256,7 +257,7 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
 // Check if objects from the bucket can be retrieved. It is basically a test for the IAM permission for GetObject
 func (c *S3Client) hasAccessToBucket(svc *s3.S3, bucketName *string) bool {
 	// don't try to list items in ignored disks
-	if !config.GetInstance().Disks().IsDiskIncluded(*bucketName) {
+	if !c.Disks.IsDiskIncluded(*bucketName) {
 		return false
 	}
 

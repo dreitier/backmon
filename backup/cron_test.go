@@ -50,3 +50,18 @@ func Test_FindPreviousWithWeekDays(t *testing.T) {
 			"Expected: [%s], Actual: [%s]", expected.String(), result.String())
 	}
 }
+
+func Test_ParseExpressionStartingWithPeriodicField(t *testing.T) {
+	cron := cronexpr.MustParse("5-55/15 * * * *")
+	loc := time.Local
+	timestamp := time.Date(2019, 4, 29, 8, 42, 55, 0, loc)
+
+	result := FindPrevious(cron, timestamp)
+
+	expected := time.Date(2019, 4, 29, 8, 35, 0, 0, loc)
+
+	if !result.Equal(expected) {
+		t.Errorf("Calculated execution time does not match expected execution time.\n"+
+			"Expected: [%s], Actual: [%s]", expected.String(), result.String())
+	}
+}

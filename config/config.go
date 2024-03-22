@@ -59,8 +59,7 @@ func HasGlobalDebugEnabled() bool {
 
 func GetInstance() *Configuration {
 	once.Do(func() {
-		instance = &Configuration{}
-		initConfig()
+		instance = CreateFromConfigurationFiles()
 	})
 	return instance
 }
@@ -89,7 +88,8 @@ func (c *Configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
-func initConfig() {
+// Create a new configuration from default configuration files
+func CreateFromConfigurationFiles() *Configuration {
 	var file *os.File = nil
 	var err error = nil
 
@@ -123,10 +123,26 @@ func initConfig() {
 		log.Fatalf("Failed to parse configuration file: %s", err)
 	}
 
-	instance.global = parseGlobalSection(cfg)
-	instance.http = parseHttpSection(cfg.Sub("http"))
-	instance.downloads = parseDownloadsSection(cfg.Sub("downloads"))
-	instance.environments = parseEnvironmentsSection(cfg.Sub("environments"))
+	return NewConfigurationInstance(cfg)
+}
+
+// Parse all section
+func NewConfigurationInstance(cfg Raw) *Configuration {
+	var r *Configuration
+
+	var globalConfiguration *GlobalConfiguration = parseGlobalSection(cfg)
+	var httpConfiguration *HttpConfiguration = parseHttpSection(cfg.Sub("http"))
+	var downloadsConfiguration *DownloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
+	var environmentsConfiguration []*EnvironmentConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
+	
+	r = &Configuration{
+		global: globalConfiguration,
+		http: httpConfiguration,
+		downloads: downloadsConfiguration,
+		environments: environmentsConfiguration,
+	}
+
+	return r
 }
 
 // ParseDisksSection Parses `disks:` section

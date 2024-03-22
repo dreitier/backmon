@@ -3,7 +3,6 @@ Description=Backup Metrics Exporter
 
 [Service]
 # root privileges required due to file permissions
-#User=node_exporter
 ExecStart=/opt/backmon/backmon
 WorkingDirectory=/opt/backmon
 Restart=always

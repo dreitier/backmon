@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2022-08-24
 ### Changed
-- BREAKING: Reanmed product name from `cloudmon` to `backmon` (#14). You __have__ to change the files `.cloudmonignore` to `.backmonignore` and `/etc/cloudmon/cloudmon.yaml` to `/etc/backmon/backmon.yaml`.
+- BREAKING: Renamed product name from `cloudmon` to `backmon` (#14). You __have__ to change the files `.cloudmonignore` to `.backmonignore` and `/etc/cloudmon/cloudmon.yaml` to `/etc/backmon/backmon.yaml`.
 
 ### Added
 - Received SIGHUP reloads disk configuration (#10)
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *cloudmon* supports `-background` parameter to disable interactive terminal
 
 ### Fixed
-- *cloumon* does not exit when running without any `/dev/tty`
+- *cloudmon* does not exit when running without any `/dev/tty`
 
 ## [1.5.0] - 2022-08-02
 ### Added

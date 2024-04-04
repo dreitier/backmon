@@ -126,19 +126,19 @@ func CreateFromConfigurationFiles() *Configuration {
 	return NewConfigurationInstance(cfg)
 }
 
-// Parse all section
+// NewConfigurationInstance Parse all section
 func NewConfigurationInstance(cfg Raw) *Configuration {
 	var r *Configuration
 
-	var globalConfiguration *GlobalConfiguration = parseGlobalSection(cfg)
-	var httpConfiguration *HttpConfiguration = parseHttpSection(cfg.Sub("http"))
-	var downloadsConfiguration *DownloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
-	var environmentsConfiguration []*EnvironmentConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
-	
+	var globalConfiguration = parseGlobalSection(cfg)
+	var httpConfiguration = parseHttpSection(cfg.Sub("http"))
+	var downloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
+	var environmentsConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
+
 	r = &Configuration{
-		global: globalConfiguration,
-		http: httpConfiguration,
-		downloads: downloadsConfiguration,
+		global:       globalConfiguration,
+		http:         httpConfiguration,
+		downloads:    downloadsConfiguration,
 		environments: environmentsConfiguration,
 	}
 
@@ -396,9 +396,12 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			return nil, errors.New("parameter 'path' has been set, but is empty")
 		}
 
+		var disks = ParseDisksSection(cfg.Sub("disks"))
+
 		c = &ClientConfiguration{
 			Directory: path,
 			EnvName:   envName,
+			Disks:     disks,
 		}
 	} else {
 		region := "eu-central-1"

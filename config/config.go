@@ -88,7 +88,7 @@ func (c *Configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
-// Create a new configuration from default configuration files
+// CreateFromConfigurationFiles Create a new configuration from default configuration files
 func CreateFromConfigurationFiles() *Configuration {
 	var file *os.File = nil
 	var err error = nil

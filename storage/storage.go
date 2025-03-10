@@ -215,7 +215,7 @@ type TemporalFile struct {
 type FileGroup []TemporalFile
 type FileLookup map[string][]FileGroup
 
-// BEGIN The following Methods for FileGroup have to be implemented for sort.Interface
+// Len BEGIN The following Methods for FileGroup have to be implemented for sort.Interface
 // Len is the number of elements in the collection.
 func (list FileGroup) Len() int {
 	return len(list)
@@ -567,7 +567,7 @@ func collectMatchingFiles(
 			case backup.SortByArchivedAt:
 				sortByTime = &file.ArchivedAt
 				break
-			// by default we are using the interpolated timestamp
+			// by default, we are using the interpolated timestamp
 			default:
 				sortByTime = file.InterpolatedTimestamp
 			}
@@ -693,25 +693,6 @@ func FindDisk(diskName string) *DiskData {
 	for _, client := range clients {
 		if disk, found := client.Disks[diskName]; found {
 			return disk
-		}
-	}
-
-	return nil
-}
-
-func FindDirectory(
-	diskName string,
-	directoryName string,
-) *backup.Directory {
-	disk := FindDisk(diskName)
-
-	if disk == nil {
-		return nil
-	}
-
-	for _, dir := range disk.Definition {
-		if dir.Alias == directoryName {
-			return dir
 		}
 	}
 

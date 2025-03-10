@@ -15,6 +15,8 @@ const (
 
 type DiskMetric struct {
 	status                       prometheus.Gauge
+	fileCountTotal               *prometheus.GaugeVec
+	diskUsageTotal               *prometheus.GaugeVec
 	fileCountExpected            *prometheus.GaugeVec
 	fileCount                    *prometheus.GaugeVec
 	fileAgeThreshold             *prometheus.GaugeVec
@@ -51,6 +53,17 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameDir,
 			LabelNameFile,
 		}),
+		fileCountTotal: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "file_count_total",
+			Help:        "The total amount of backup files present.",
+			ConstLabels: presetLabels,
+		}, []string{
+			LabelNameDir,
+			LabelNameFile,
+			LabelNameGroup,
+		}),
 		fileCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystem,
@@ -62,6 +75,13 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameFile,
 			LabelNameGroup,
 		}),
+		diskUsageTotal: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "disk_usage_bytes",
+			Help:        "The amount of bytes used on a disk.",
+			ConstLabels: presetLabels,
+		}, []string{}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -164,6 +184,8 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 	}
 	registry.MustRegister(disk.status)
+	registry.MustRegister(disk.fileCountTotal)
+	registry.MustRegister(disk.diskUsageTotal)
 	registry.MustRegister(disk.fileCountExpected)
 	registry.MustRegister(disk.fileCount)
 	registry.MustRegister(disk.fileAgeThreshold)
@@ -180,6 +202,8 @@ func NewDisk(diskName string) *DiskMetric {
 
 func (b *DiskMetric) Drop() {
 	registry.Unregister(b.status)
+	registry.Unregister(b.fileCountTotal)
+	registry.Unregister(b.diskUsageTotal)
 	registry.Unregister(b.fileCountExpected)
 	registry.Unregister(b.fileCount)
 	registry.Unregister(b.fileAgeThreshold)
@@ -197,6 +221,8 @@ func (b *DiskMetric) Drop() {
 
 func (b *DiskMetric) resetMetrics() {
 	b.fileCountExpected.Reset()
+	b.fileCountTotal.Reset()
+	b.diskUsageTotal.Reset()
 	b.fileCount.Reset()
 	b.fileAgeThreshold.Reset()
 	b.fileYoungCount.Reset()

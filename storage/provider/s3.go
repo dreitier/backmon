@@ -108,7 +108,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 	return bucketRoot, nil
 }
 
-// Clean up files which have been temporary downloaded for .stat introspection
+// Clean up files which have been temporarily downloaded for .stat introspection
 func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
 	for _, pathToDotStatFile := range *dotStatFiles {
 		log.Debugf("Removing temporary file %s", pathToDotStatFile)

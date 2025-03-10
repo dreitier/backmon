@@ -308,6 +308,9 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 	log.Debugf("Updating metrics ...")
 
 	now := time.Now()
+	totalObjectCount, totalSize := gatherDiskUsageStats(root)
+	disk.metrics.UpdateUsageStats(totalObjectCount, totalSize)
+
 	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))
@@ -697,4 +700,8 @@ func FindDisk(diskName string) *DiskData {
 	}
 
 	return nil
+}
+
+func gatherDiskUsageStats(root *fs.DirectoryInfo) (uint64, uint64) {
+	return 0, 0
 }

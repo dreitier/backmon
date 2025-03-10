@@ -15,8 +15,8 @@ const (
 
 type DiskMetric struct {
 	status                       prometheus.Gauge
-	fileCountTotal               *prometheus.GaugeVec
-	diskUsageTotal               *prometheus.GaugeVec
+	fileCountTotal               prometheus.Gauge
+	diskUsageTotal               prometheus.Gauge
 	fileCountExpected            *prometheus.GaugeVec
 	fileCount                    *prometheus.GaugeVec
 	fileAgeThreshold             *prometheus.GaugeVec
@@ -53,16 +53,12 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameDir,
 			LabelNameFile,
 		}),
-		fileCountTotal: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		fileCountTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystem,
 			Name:        "file_count_total",
 			Help:        "The total amount of backup files present.",
 			ConstLabels: presetLabels,
-		}, []string{
-			LabelNameDir,
-			LabelNameFile,
-			LabelNameGroup,
 		}),
 		fileCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
@@ -75,13 +71,13 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameFile,
 			LabelNameGroup,
 		}),
-		diskUsageTotal: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		diskUsageTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystem,
 			Name:        "disk_usage_bytes",
 			Help:        "The amount of bytes used on a disk.",
 			ConstLabels: presetLabels,
-		}, []string{}),
+		}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -221,8 +217,6 @@ func (b *DiskMetric) Drop() {
 
 func (b *DiskMetric) resetMetrics() {
 	b.fileCountExpected.Reset()
-	b.fileCountTotal.Reset()
-	b.diskUsageTotal.Reset()
 	b.fileCount.Reset()
 	b.fileAgeThreshold.Reset()
 	b.fileYoungCount.Reset()
@@ -263,6 +257,11 @@ func (b *DiskMetric) UpdateFileCounts(dir string, file string, group string, pre
 
 		b.deleteLatestFileLabels(labels)
 	}
+}
+
+func (b *DiskMetric) UpdateUsageStats(countTotal uint64, sizeTotal uint64) {
+	b.fileCountTotal.Set(float64(countTotal))
+	b.diskUsageTotal.Set(float64(sizeTotal))
 }
 
 func (b *DiskMetric) deleteLatestFileLabels(labels map[string]string) {

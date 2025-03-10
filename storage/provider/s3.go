@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -12,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -23,6 +25,8 @@ type S3Client struct {
 	Token             string
 	Region            string
 	Endpoint          string
+	Insecure          bool
+	TLSSkipVerify     bool
 	ForcePathStyle    bool
 	EnvName           string
 	s3Client          *s3.S3
@@ -51,6 +55,18 @@ func getClient(c *S3Client) (*s3.S3, error) {
 
 	if len(c.Endpoint) > 0 {
 		cfg.Endpoint = aws.String(c.Endpoint)
+	}
+
+	if c.Insecure {
+		cfg.DisableSSL = aws.Bool(true)
+	}
+
+	if c.TLSSkipVerify {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr}
+		cfg.HTTPClient = client
 	}
 
 	sess, err := session.NewSession(&cfg)

@@ -383,6 +383,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	var c *ClientConfiguration
 	const paramRegion = "region"
 	const paramForcePathStyle = "force_path_style"
+	const paramInsecure = "insecure"
+	const paramTLSSkipVerify = "tls_skip_verify"
 	const paramAccessKeyId = "access_key_id"
 	const paramSecretAccessKey = "secret_access_key"
 	const paramEndpoint = "endpoint"
@@ -414,6 +416,16 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			forcePathStyle = cfg.Bool(paramForcePathStyle)
 		}
 
+		insecure := false
+		if cfg.Has(paramInsecure) {
+			insecure = cfg.Bool(paramInsecure)
+		}
+
+		tlsSkipVerify := false
+		if cfg.Has(paramTLSSkipVerify) {
+			tlsSkipVerify = cfg.Bool(paramTLSSkipVerify)
+		}
+
 		autoDiscoverDisks := true
 		var disks = ParseDisksSection(cfg.Sub("disks"))
 
@@ -425,6 +437,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			EnvName:           envName,
 			Region:            region,
 			ForcePathStyle:    forcePathStyle,
+			Insecure:          insecure,
+			TLSSkipVerify:     tlsSkipVerify,
 			AccessKey:         cfg.String(paramAccessKeyId),
 			SecretKey:         cfg.String(paramSecretAccessKey),
 			Endpoint:          cfg.String(paramEndpoint),

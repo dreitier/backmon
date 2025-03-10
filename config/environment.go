@@ -13,6 +13,8 @@ type ClientConfiguration struct {
 	AccessKey         string
 	SecretKey         string
 	Endpoint          string
+	Insecure          bool
+	TLSSkipVerify     bool
 	ForcePathStyle    bool
 	Token             string
 	AutoDiscoverDisks bool

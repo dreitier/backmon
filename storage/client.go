@@ -22,6 +22,8 @@ func NewClient(config *config.ClientConfiguration) Client {
 			AccessKey:         config.AccessKey,
 			SecretKey:         config.SecretKey,
 			Endpoint:          config.Endpoint,
+			Insecure:          config.Insecure,
+			TLSSkipVerify:     config.TLSSkipVerify,
 			ForcePathStyle:    config.ForcePathStyle,
 			Token:             config.Token,
 			AutoDiscoverDisks: config.AutoDiscoverDisks,

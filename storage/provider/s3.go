@@ -65,7 +65,7 @@ func getClient(c *S3Client) (*s3.S3, error) {
 }
 
 // GetFileNames TODO: do something smart with unused parameter maxDepth
-func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	svc, err := getClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)

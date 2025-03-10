@@ -19,7 +19,7 @@ type LocalClient struct {
 	EnvName   string
 }
 
-func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func (c *LocalClient) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	if diskName != c.Directory {
 		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", diskName))
 	}
@@ -27,7 +27,7 @@ func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.Director
 	return scanDir(diskName, "", "", maxDepth)
 }
 
-func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	currentSubdirectoryPath := filepath.Join(fullSubdirectoryPath, directoryName)
 	absoluteSubdirectoryPath := filepath.Join(root, currentSubdirectoryPath)
 	// TODO: fix deprecation

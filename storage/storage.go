@@ -25,6 +25,10 @@ var (
 	ignoreFile = &fs.FileInfo{Name: ".backmonignore"}
 )
 
+const (
+	maxDirDepth uint64 = 100
+)
+
 func InitializeConfiguration() {
 	envs := config.GetInstance().Environments()
 	for _, env := range envs {
@@ -195,10 +199,14 @@ func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
 	return changed, nil
 }
 
-func (disk *DiskData) maxDepth() uint {
-	maxDepth := uint(0)
+func (disk *DiskData) maxDepth() uint64 {
+	if disk.Definition == nil {
+		return maxDirDepth
+	}
+
+	maxDepth := uint64(0)
 	for _, dir := range disk.Definition {
-		depth := uint(len(dir.Filter.Layers))
+		depth := uint64(len(dir.Filter.Layers))
 		if depth > maxDepth {
 			maxDepth = depth
 		}
@@ -284,11 +292,10 @@ func UpdateDiskInfo() {
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, client.DefinitionFilename, err)
 				disk.metrics.DefinitionsMissing()
-				continue
+			} else {
+				disk.updateDefinitions(buf)
+				_ = buf.Close()
 			}
-
-			disk.updateDefinitions(buf)
-			_ = buf.Close()
 
 			files, err := client.Client.GetFileNames(diskName, disk.maxDepth())
 			if err != nil {
@@ -308,8 +315,9 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 	log.Debugf("Updating metrics ...")
 
 	now := time.Now()
-	totalObjectCount, totalSize := gatherDiskUsageStats(root)
-	disk.metrics.UpdateUsageStats(totalObjectCount, totalSize)
+
+	objectCountTotal, objectSizeTotal := gatherDirUsageStats(root, uint64(0), uint64(0))
+	disk.metrics.UpdateUsageStats(objectCountTotal, objectSizeTotal)
 
 	for iDir, dirDef := range disk.Definition {
 		log.Debugf("# %s", dirDef.Alias)
@@ -702,6 +710,17 @@ func FindDisk(diskName string) *DiskData {
 	return nil
 }
 
-func gatherDiskUsageStats(root *fs.DirectoryInfo) (uint64, uint64) {
-	return 0, 0
+// gatherDirUsageStats returns the count and total size of all objects inside a directory
+func gatherDirUsageStats(dir *fs.DirectoryInfo, objectCount uint64, objectSizeSum uint64) (uint64, uint64) {
+
+	for _, file := range dir.Files {
+		objectSizeSum += uint64(file.Size)
+		objectCount++
+	}
+
+	for _, subDir := range dir.SubDirs {
+		objectCount, objectSizeSum = gatherDirUsageStats(subDir, objectCount, objectSizeSum)
+	}
+
+	return objectCount, objectSizeSum
 }

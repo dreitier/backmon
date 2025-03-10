@@ -55,7 +55,6 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		fileCountTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
 			Name:        "file_count_total",
 			Help:        "The total amount of backup files present.",
 			ConstLabels: presetLabels,
@@ -73,7 +72,6 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		diskUsageTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
 			Name:        "disk_usage_bytes",
 			Help:        "The amount of bytes used on a disk.",
 			ConstLabels: presetLabels,

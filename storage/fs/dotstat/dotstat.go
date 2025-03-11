@@ -6,7 +6,7 @@ import (
 	fs "github.com/dreitier/backmon/storage/fs"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -70,8 +70,7 @@ func RemoveDotStatSuffix(pathToDotStatFile string) string {
 
 // From the provided YAML file the keys are read an then accordingly applied to the file's stat attributes (BornAt, ModifiedAt, ArchivedAt)
 func updateStatAttributesFromYamlValues(fileInfo *fs.FileInfo, pathToStatFile string) (*DotStatYaml, error) {
-	// TODO: fix deprecation
-	buf, err := ioutil.ReadFile(pathToStatFile)
+	buf, err := os.ReadFile(pathToStatFile)
 	if err != nil {
 		return nil, err
 	}

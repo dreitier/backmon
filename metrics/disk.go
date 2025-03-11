@@ -17,6 +17,7 @@ type DiskMetric struct {
 	status                       prometheus.Gauge
 	fileCountTotal               prometheus.Gauge
 	diskUsageTotal               prometheus.Gauge
+	diskQuota                    prometheus.Gauge
 	fileCountExpected            *prometheus.GaugeVec
 	fileCount                    *prometheus.GaugeVec
 	fileAgeThreshold             *prometheus.GaugeVec
@@ -73,6 +74,12 @@ func NewDisk(diskName string) *DiskMetric {
 		diskUsageTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Name:        "disk_usage_bytes",
+			Help:        "The amount of bytes used on a disk.",
+			ConstLabels: presetLabels,
+		}),
+		diskQuota: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Name:        "disk_quota_bytes",
 			Help:        "The amount of bytes used on a disk.",
 			ConstLabels: presetLabels,
 		}),
@@ -198,6 +205,7 @@ func (b *DiskMetric) Drop() {
 	registry.Unregister(b.status)
 	registry.Unregister(b.fileCountTotal)
 	registry.Unregister(b.diskUsageTotal)
+	registry.Unregister(b.diskQuota)
 	registry.Unregister(b.fileCountExpected)
 	registry.Unregister(b.fileCount)
 	registry.Unregister(b.fileAgeThreshold)
@@ -229,6 +237,7 @@ func (b *DiskMetric) resetMetrics() {
 
 func (b *DiskMetric) DefinitionsMissing() {
 	b.status.Set(1)
+	registry.Unregister(b.diskQuota)
 	b.resetMetrics()
 }
 
@@ -260,6 +269,15 @@ func (b *DiskMetric) UpdateFileCounts(dir string, file string, group string, pre
 func (b *DiskMetric) UpdateUsageStats(countTotal uint64, sizeTotal uint64) {
 	b.fileCountTotal.Set(float64(countTotal))
 	b.diskUsageTotal.Set(float64(sizeTotal))
+}
+
+func (b *DiskMetric) UpdateDiskQuota(quota uint64) {
+	if quota > 0 {
+		registry.MustRegister(b.diskQuota)
+		b.diskQuota.Set(float64(quota))
+	} else {
+		registry.Unregister(b.diskQuota)
+	}
 }
 
 func (b *DiskMetric) deleteLatestFileLabels(labels map[string]string) {

@@ -114,7 +114,7 @@ func findDirectory(
 	if disk == nil {
 		return nil
 	}
-	for _, dir := range disk.Definition {
+	for _, dir := range disk.Definition.Directories {
 		if dir.Alias == directoryName {
 			return dir
 		}

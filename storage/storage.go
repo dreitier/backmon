@@ -139,7 +139,8 @@ type DiskData struct {
 	SafeName        string
 	metrics         *metrics.DiskMetric
 	groups          []map[string][]*fs.FileInfo
-	Definition      backup.Definition
+	quota           uint64
+	Definition      *backup.Definition
 	definitionsHash [sha1.Size]byte
 }
 
@@ -173,7 +174,8 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 	}
 
 	disk.metrics.DefinitionsUpdated()
-	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition))
+	disk.metrics.UpdateDiskQuota(disk.Definition.Quota)
+	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition.Directories))
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -205,7 +207,7 @@ func (disk *DiskData) maxDepth() uint64 {
 	}
 
 	maxDepth := uint64(0)
-	for _, dir := range disk.Definition {
+	for _, dir := range disk.Definition.Directories {
 		depth := uint64(len(dir.Filter.Layers))
 		if depth > maxDepth {
 			maxDepth = depth
@@ -319,7 +321,7 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 	objectCountTotal, objectSizeTotal := gatherDirUsageStats(root, uint64(0), uint64(0))
 	disk.metrics.UpdateUsageStats(objectCountTotal, objectSizeTotal)
 
-	for iDir, dirDef := range disk.Definition {
+	for iDir, dirDef := range disk.Definition.Directories {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))
 		fileGroups := make(FileLookup, len(dirDef.Files))
@@ -678,17 +680,17 @@ func findGroups(
 
 	var dirI int
 
-	for dirI = 0; dirI < len(disk.Definition); dirI++ {
-		if disk.Definition[dirI].Alias == directoryName {
+	for dirI = 0; dirI < len(disk.Definition.Directories); dirI++ {
+		if disk.Definition.Directories[dirI].Alias == directoryName {
 			break
 		}
 	}
 
-	if dirI >= len(disk.Definition) {
+	if dirI >= len(disk.Definition.Directories) {
 		return nil, 0
 	}
 
-	dir := disk.Definition[dirI]
+	dir := disk.Definition.Directories[dirI]
 	var fileI int
 
 	for fileI = 0; fileI < len(dir.Files); fileI++ {

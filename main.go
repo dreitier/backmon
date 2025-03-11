@@ -98,7 +98,7 @@ func configureTerminal() {
 
 func configureLogrus() {
 	customFormatter := new(log.TextFormatter)
-	customFormatter.TimestampFormat = "2022-08-02 20:22:05"
+	customFormatter.TimestampFormat = time.RFC3339
 	customFormatter.FullTimestamp = true
 	log.SetFormatter(customFormatter)
 }

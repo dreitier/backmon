@@ -12,7 +12,6 @@ import (
 	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -165,8 +164,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			s3PathToStatFile := parentPath + "/" + fileName
 			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile)
 
-			// TODO fix deprecation
-			tempFile, err := ioutil.TempFile(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+			tempFile, err := os.CreateTemp(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
 
 			if err != nil {
 				log.Errorf("Unable to create temporary file for .stat: %s", err)
@@ -178,8 +176,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			// .stat files are registered for later examination
 			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
 			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
-			// TODO: fix deprecation
-			byteStreamContent, _ := ioutil.ReadAll(s3OutObject.Body)
+			byteStreamContent, _ := io.ReadAll(s3OutObject.Body)
 
 			_, err = tempFile.Write(byteStreamContent)
 			if err != nil {

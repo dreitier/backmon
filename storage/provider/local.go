@@ -34,7 +34,7 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 	fileInfos, err := ioutil.ReadDir(absoluteSubdirectoryPath)
 
 	if err != nil {
-		//TODO: log error
+		log.Error("Failed to scan directory %s", absoluteSubdirectoryPath, err)
 		return nil, err
 	}
 

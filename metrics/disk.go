@@ -46,10 +46,9 @@ func NewDisk(diskName string) *DiskMetric {
 			ConstLabels: presetLabels,
 		}),
 		fileCountExpected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			// TODO BREAKING: Rename that label to files_maximum_count
-			Name:        "file_count_aim",
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "files_maximum_count",
 			Help:        "The amount of backup files expected to be present in this group.",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -86,10 +85,9 @@ func NewDisk(diskName string) *DiskMetric {
 			ConstLabels: presetLabels,
 		}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			// TODO BREAKING: Rename that label to files_maximum_age_in_seconds
-			Name:        "file_age_aim_seconds",
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "files_maximum_age_seconds",
 			Help:        "The maximum age (in seconds) that any file in this group should reach.",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -108,10 +106,9 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameGroup,
 		}),
 		latestFileCreationExpectedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			// TODO BREAKING: Rename that label to latest_file_creation_expected_at
-			Name:        "latest_creation_aim_seconds",
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "latest_file_creation_expected_at",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group should have occurred.",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -119,10 +116,9 @@ func NewDisk(diskName string) *DiskMetric {
 			LabelNameFile,
 		}),
 		latestFileCreatedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			// TODO BREAKING: Rename that label to latest_file_created_at
-			Name:        "latest_creation_seconds",
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+			Name:        "latest_file_created_at",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group was created.",
 			ConstLabels: presetLabels,
 		}, []string{

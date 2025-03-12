@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"errors"
+	log "github.com/sirupsen/logrus"
 	"time"
 
 	fs "github.com/dreitier/backmon/storage/fs"
@@ -273,7 +275,14 @@ func (b *DiskMetric) UpdateUsageStats(countTotal uint64, sizeTotal uint64) {
 
 func (b *DiskMetric) UpdateDiskQuota(quota uint64) {
 	if quota > 0 {
-		registry.MustRegister(b.diskQuota)
+		err := registry.Register(b.diskQuota)
+		if err != nil {
+			if errors.Is(err, err.(prometheus.AlreadyRegisteredError)) {
+				log.Debugf("Disk quote metric is already registered")
+			} else {
+				log.Errorf("Failed to register disk quota metric, %v", err)
+			}
+		}
 		b.diskQuota.Set(float64(quota))
 	} else {
 		registry.Unregister(b.diskQuota)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -82,7 +83,7 @@ func (c Raw) Has(key string) bool {
 }
 
 func (c Raw) String(key string) string {
-	return asString(c[key])
+	return interpolate(asString(c[key]))
 }
 
 func (c Raw) StringSlice(key string) []string {
@@ -275,4 +276,17 @@ func asBool(val interface{}) bool {
 		}
 	}
 	return false
+}
+
+func interpolate(s string) string {
+	r := regexp.MustCompile(`^__\${(\w+)}__$`)
+	m := r.FindStringSubmatch(s)
+
+	if len(m) <= 1 {
+		return s
+	}
+
+	v := os.Getenv(m[1])
+
+	return v
 }

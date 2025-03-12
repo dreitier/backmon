@@ -405,32 +405,33 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			EnvName:   envName,
 			Disks:     disks,
 		}
-	} else {
+	} else if cfg.Has("s3") {
+		s3Cfg := cfg.Sub("s3")
 		region := "eu-central-1"
-		if cfg.Has(paramRegion) {
-			region = cfg.String(paramRegion)
+		if s3Cfg.Has(paramRegion) {
+			region = s3Cfg.String(paramRegion)
 		}
 
 		forcePathStyle := false
-		if cfg.Has(paramForcePathStyle) {
-			forcePathStyle = cfg.Bool(paramForcePathStyle)
+		if s3Cfg.Has(paramForcePathStyle) {
+			forcePathStyle = s3Cfg.Bool(paramForcePathStyle)
 		}
 
 		insecure := false
-		if cfg.Has(paramInsecure) {
-			insecure = cfg.Bool(paramInsecure)
+		if s3Cfg.Has(paramInsecure) {
+			insecure = s3Cfg.Bool(paramInsecure)
 		}
 
 		tlsSkipVerify := false
-		if cfg.Has(paramTLSSkipVerify) {
-			tlsSkipVerify = cfg.Bool(paramTLSSkipVerify)
+		if s3Cfg.Has(paramTLSSkipVerify) {
+			tlsSkipVerify = s3Cfg.Bool(paramTLSSkipVerify)
 		}
 
 		autoDiscoverDisks := true
-		var disks = ParseDisksSection(cfg.Sub("disks"))
+		var disks = ParseDisksSection(s3Cfg.Sub("disks"))
 
-		if cfg.Has(paramAutoDiscoverDisks) {
-			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
+		if s3Cfg.Has(paramAutoDiscoverDisks) {
+			autoDiscoverDisks = s3Cfg.Bool(paramAutoDiscoverDisks)
 		}
 
 		c = &ClientConfiguration{
@@ -439,13 +440,15 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			ForcePathStyle:    forcePathStyle,
 			Insecure:          insecure,
 			TLSSkipVerify:     tlsSkipVerify,
-			AccessKey:         cfg.String(paramAccessKeyId),
-			SecretKey:         cfg.String(paramSecretAccessKey),
-			Endpoint:          cfg.String(paramEndpoint),
-			Token:             cfg.String(paramToken),
+			AccessKey:         s3Cfg.String(paramAccessKeyId),
+			SecretKey:         s3Cfg.String(paramSecretAccessKey),
+			Endpoint:          s3Cfg.String(paramEndpoint),
+			Token:             s3Cfg.String(paramToken),
 			AutoDiscoverDisks: autoDiscoverDisks,
 			Disks:             disks,
 		}
+	} else {
+		return nil, errors.New(fmt.Sprintf("no supported storage configuration found for environment %s", envName))
 	}
 
 	definitions := "backup_definitions.yaml"

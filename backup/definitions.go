@@ -62,6 +62,9 @@ func ParseDefinition(definitionsReader io.Reader) (*Definition, error) {
 }
 
 func parseQuota(raw *RawDefinition) (uint64, error) {
+	if raw.quota == "" {
+		return 0, nil
+	}
 	quota, err := datasize.Parse(raw.quota)
 
 	if err != nil {

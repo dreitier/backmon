@@ -430,8 +430,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		autoDiscoverDisks := true
 		var disks = ParseDisksSection(cfg.Sub("disks"))
 
-		if cfg.Has(paramAutoDiscoverDisks) {
-			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
+		if s3Cfg.Has(paramAutoDiscoverDisks) {
+			autoDiscoverDisks = s3Cfg.Bool(paramAutoDiscoverDisks)
 		}
 
 		c = &ClientConfiguration{

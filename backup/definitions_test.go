@@ -18,7 +18,9 @@ func Test_parseDefinitions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer definitionsFile.Close()
+	defer func(definitionsFile *os.File) {
+		_ = definitionsFile.Close()
+	}(definitionsFile)
 
 	reader := io.Reader(definitionsFile)
 
@@ -32,15 +34,20 @@ func Test_parseDefinitions(t *testing.T) {
 		t.Error("parsed definitions object is nil")
 	}
 
-	assertion.Equal("my-backups", defs["backups"].Alias)
-	assertion.Equal(cronexpr.MustParse("0 2 * * *"), defs["backups"].Defaults.Schedule)
-	assertion.Equal(uint64(10), defs["backups"].Defaults.RetentionCount)
-	assertion.Equal(7*24*time.Hour, defs["backups"].Defaults.RetentionAge)
-	assertion.Equal(false, defs["backups"].Defaults.Purge)
-	assertion.Equal("pgdump", defs["backups"].Files["dump-%Y%M%D.sql"].Alias)
-	assertion.Equal(cronexpr.MustParse("0 1 * * *"), defs["backups"].Files["dump-%Y%M%D.sql"].Schedule)
-	assertion.Equal(uint64(10), defs["backups"].Files["dump-%Y%M%D.sql"].RetentionCount)
-	assertion.Equal(7*24*time.Hour, defs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
+	quota := defs.quota
+	dirs := defs.directories
+
+	assertion.Equal(quota, "2GiB")
+	assertion.Equal("my-backups", dirs["backups"].Alias)
+	assertion.Equal("my-backups", dirs["backups"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 2 * * *"), dirs["backups"].Defaults.Schedule)
+	assertion.Equal(uint64(10), dirs["backups"].Defaults.RetentionCount)
+	assertion.Equal(7*24*time.Hour, dirs["backups"].Defaults.RetentionAge)
+	assertion.Equal(false, dirs["backups"].Defaults.Purge)
+	assertion.Equal("pgdump", dirs["backups"].Files["dump-%Y%M%D.sql"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 1 * * *"), dirs["backups"].Files["dump-%Y%M%D.sql"].Schedule)
+	assertion.Equal(uint64(10), dirs["backups"].Files["dump-%Y%M%D.sql"].RetentionCount)
+	assertion.Equal(7*24*time.Hour, dirs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
 }
 
 func Test_parseFaultyDefinitions_expectError(t *testing.T) {

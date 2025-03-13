@@ -32,7 +32,7 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 	dirEntries, err := os.ReadDir(absoluteSubdirectoryPath)
 
 	if err != nil {
-		log.Error("Failed to scan directory %s", absoluteSubdirectoryPath, err)
+		log.Errorf("Failed to scan directory %s, %v", absoluteSubdirectoryPath, err)
 		return nil, err
 	}
 

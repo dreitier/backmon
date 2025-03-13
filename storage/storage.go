@@ -283,34 +283,34 @@ func UpdateDiskInfo() {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for environmentName, client := range clients {
+	for environmentName, cd := range clients {
 		log.Debugf("[env:%s] Updating disks", environmentName)
 
-		if err := client.updateDiskInfo(environmentName); err != nil {
-			log.Errorf("[env:%s] Could not retrieve disk names from client: %v", environmentName, err)
+		if err := cd.updateDiskInfo(environmentName); err != nil {
+			log.Errorf("[env:%s] Could not retrieve disk names from cd: %v", environmentName, err)
 			continue
 		}
 
-		for diskName, disk := range client.Disks {
+		for diskName, disk := range cd.Disks {
 			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
 
-			buf, err := client.Client.Download(diskName, client.Definition)
+			buf, err := cd.Client.Download(diskName, cd.Definition)
 			if err != nil {
-				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, client.DefinitionFilename, err)
+				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, cd.DefinitionFilename, err)
 				disk.metrics.DefinitionsMissing()
 			} else {
 				disk.updateDefinitions(buf)
 				_ = buf.Close()
 			}
 
-			files, err := client.Client.GetFileNames(diskName, disk.maxDepth())
+			files, err := cd.Client.GetFileNames(diskName, disk.maxDepth())
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
 				// don't just return, we still need to update the metrics!
 				files = &fs.DirectoryInfo{Name: diskName}
 			}
 
-			updateMetrics(client.Client, disk, files)
+			updateMetrics(cd.Client, disk, files)
 		}
 	}
 

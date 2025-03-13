@@ -32,7 +32,7 @@ func printVersion() {
 
 func main() {
 	flag.Parse()
-	configureLogrus()
+	configureLogger()
 	configureTerminal()
 	configureSignals()
 	printVersion()
@@ -83,7 +83,7 @@ func configureTerminal() {
 				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-					// handlq exiting
+					// handle exiting
 				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
 					log.Printf("Exiting...")
 					termbox.Close()
@@ -98,7 +98,7 @@ func configureTerminal() {
 	}()
 }
 
-func configureLogrus() {
+func configureLogger() {
 	customFormatter := new(log.TextFormatter)
 	customFormatter.TimestampFormat = time.RFC3339
 	customFormatter.FullTimestamp = true

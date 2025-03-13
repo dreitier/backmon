@@ -82,18 +82,12 @@ func getClient(c *S3Client) (*s3.S3, error) {
 // GetFileNames TODO: do something smart with unused parameter maxDepth
 func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	svc, err := getClient(c)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 
-	// get items from the diskName
-	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
-	}
-
-	log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
+	var continuationToken *string
 
 	bucketRoot := &fs.DirectoryInfo{
 		Name:    diskName,
@@ -102,11 +96,9 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 
 	dotStatFiles := make(map[string] /* path to regular file*/ string /* path to .stat file */)
 
-	c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
-
-	// if the diskName held more than $maxKeys items, fetch them until we got them all
-	for *result.IsTruncated {
-		result, err = svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName, Marker: result.NextMarker})
+	for {
+		// get items from the diskName
+		result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: &diskName, ContinuationToken: continuationToken})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
@@ -115,6 +107,12 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 		log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
 
 		c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
+
+		if !*result.IsTruncated {
+			break
+		}
+
+		continuationToken = result.NextContinuationToken
 	}
 
 	dotstat.ApplyDotStatValuesRecursively(dotStatFiles, bucketRoot)

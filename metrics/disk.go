@@ -40,14 +40,14 @@ func NewDisk(diskName string) *DiskMetric {
 	disk := &DiskMetric{
 		status: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemDefinition,
 			Name:        "status",
 			Help:        "Indicates whether there were any problems collecting metrics for this disk. Any value >0 means that errors occurred.",
 			ConstLabels: presetLabels,
 		}),
 		fileCountExpected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "files_maximum_count",
 			Help:        "The amount of backup files expected to be present in this group.",
 			ConstLabels: presetLabels,
@@ -63,7 +63,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		fileCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "file_count",
 			Help:        "The amount of backup files present in this group.",
 			ConstLabels: presetLabels,
@@ -86,7 +86,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "files_maximum_age_seconds",
 			Help:        "The maximum age (in seconds) that any file in this group should reach.",
 			ConstLabels: presetLabels,
@@ -96,7 +96,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		fileYoungCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "file_young_count",
 			Help:        "The amount of backup files in this group that are younger than the maximum age (file_age_aim_seconds).",
 			ConstLabels: presetLabels,
@@ -107,7 +107,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileCreationExpectedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_creation_expected_at",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group should have occurred.",
 			ConstLabels: presetLabels,
@@ -117,7 +117,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileCreatedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_created_at",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group was created.",
 			ConstLabels: presetLabels,
@@ -128,7 +128,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileCreationDuration: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_creation_duration",
 			Help:        "Describes how long it took to create the backup file in seconds",
 			ConstLabels: presetLabels,
@@ -139,7 +139,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileBornAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_born_at",
 			Help:        "Unix timestamp on which the latest file has been initially created",
 			ConstLabels: presetLabels,
@@ -150,7 +150,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileModifiedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_modified_at",
 			Help:        "Unix timestamp on which the latest file has been modified",
 			ConstLabels: presetLabels,
@@ -161,7 +161,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestFileArchivedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_file_archived_at",
 			Help:        "Unix timestamp on which the latest file has been archived",
 			ConstLabels: presetLabels,
@@ -172,7 +172,7 @@ func NewDisk(diskName string) *DiskMetric {
 		}),
 		latestSize: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Subsystem:   subsystemBackup,
 			Name:        "latest_size_bytes",
 			Help:        "Size (in bytes) of the latest backup in the corresponding file group.",
 			ConstLabels: presetLabels,
@@ -234,13 +234,13 @@ func (b *DiskMetric) resetMetrics() {
 }
 
 func (b *DiskMetric) DefinitionsMissing() {
-	b.status.Set(1)
+	b.status.Set(0)
 	registry.Unregister(b.diskQuota)
 	b.resetMetrics()
 }
 
 func (b *DiskMetric) DefinitionsUpdated() {
-	b.status.Set(0)
+	b.status.Set(1)
 	b.resetMetrics()
 }
 

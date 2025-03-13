@@ -173,6 +173,10 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 		return
 	}
 
+	if len(disk.Definition.Directories) == 0 {
+		log.Warnf("Backup definitions in '%s' has no directories.", disk.Name)
+	}
+
 	disk.metrics.DefinitionsUpdated()
 	disk.metrics.UpdateDiskQuota(disk.Definition.Quota)
 	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition.Directories))

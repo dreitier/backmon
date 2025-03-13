@@ -48,7 +48,7 @@ func NewDisk(diskName string) *DiskMetric {
 		fileCountExpected: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "files_maximum_count",
+			Name:        "file_count_max",
 			Help:        "The amount of backup files expected to be present in this group.",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -58,7 +58,7 @@ func NewDisk(diskName string) *DiskMetric {
 		fileCountTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Name:        "file_count_total",
-			Help:        "The total amount of backup files present.",
+			Help:        "The total amount of all files present.",
 			ConstLabels: presetLabels,
 		}),
 		fileCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -87,7 +87,7 @@ func NewDisk(diskName string) *DiskMetric {
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "files_maximum_age_seconds",
+			Name:        "file_age_max_seconds",
 			Help:        "The maximum age (in seconds) that any file in this group should reach.",
 			ConstLabels: presetLabels,
 		}, []string{

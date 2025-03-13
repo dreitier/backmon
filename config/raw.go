@@ -3,6 +3,7 @@ package config
 import (
 	"code.cloudfoundry.org/bytefmt"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
 	"os"
@@ -41,6 +42,7 @@ type Raw map[string]interface{}
 func ParseFromString(content string) (Raw, error) {
 	var out map[string]interface{}
 	if err := yaml.Unmarshal([]byte(content), &out); err != nil {
+		log.Fatalf("Failed to parse configuration file: %v", err)
 		return nil, err
 	}
 	return out, nil

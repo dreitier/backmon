@@ -15,7 +15,8 @@ port: 8080
 http:
 environments:
   default:
-    region: eu-central-2
+    s3:
+      region: eu-central-2
 `)
 	sut := NewConfigurationInstance(raw)
 
@@ -58,6 +59,7 @@ port: 8080
 
 environments:
   default:
+    s3:
     disks:
       include:
         - included-1

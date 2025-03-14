@@ -31,7 +31,7 @@ func Test_parseDefinitions(t *testing.T) {
 	}
 
 	if defs == nil {
-		t.Error("parsed definitions object is nil")
+		t.Fatalf("parsed definitions object is nil")
 	}
 
 	quota := defs.quota

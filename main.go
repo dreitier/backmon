@@ -92,7 +92,7 @@ func configureTerminal() {
 			case termbox.EventError:
 				panic(ev.Err)
 			default:
-				panic("unhandled default case")
+				log.Tracef("unhandled default case %v", ev)
 			}
 		}
 	}()

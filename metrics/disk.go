@@ -108,7 +108,7 @@ func NewDisk(diskName string) *DiskMetric {
 		latestFileCreationExpectedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "latest_file_creation_expected_at",
+			Name:        "latest_file_creation_expected_at_timestamp_seconds",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group should have occurred.",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -118,7 +118,7 @@ func NewDisk(diskName string) *DiskMetric {
 		latestFileCreatedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "latest_file_created_at",
+			Name:        "latest_file_created_at_timestamp_seconds",
 			Help:        "Unix timestamp on which the latest backup in the corresponding file group was created.",
 			ConstLabels: presetLabels,
 		}, []string{

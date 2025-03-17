@@ -140,7 +140,7 @@ func NewDisk(diskName string) *DiskMetric {
 		latestFileBornAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "latest_file_born_at",
+			Name:        "latest_file_born_at_timestamp_seconds",
 			Help:        "Unix timestamp on which the latest file has been initially created",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -151,7 +151,7 @@ func NewDisk(diskName string) *DiskMetric {
 		latestFileModifiedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "latest_file_modified_at",
+			Name:        "latest_file_modified_at_timestamp_seconds",
 			Help:        "Unix timestamp on which the latest file has been modified",
 			ConstLabels: presetLabels,
 		}, []string{
@@ -162,7 +162,7 @@ func NewDisk(diskName string) *DiskMetric {
 		latestFileArchivedAt: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystemBackup,
-			Name:        "latest_file_archived_at",
+			Name:        "latest_file_archived_at_timestamp_seconds",
 			Help:        "Unix timestamp on which the latest file has been archived",
 			ConstLabels: presetLabels,
 		}, []string{

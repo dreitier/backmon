@@ -1,13 +1,13 @@
 package config
 
 type HttpConfiguration struct {
-	BasicAuth   *BasicAuthConfiguration
-	Tls         *TlsConfiguration
+	BasicAuth *BasicAuthConfiguration
+	Tls       *TlsConfiguration
 }
 
 type BasicAuthConfiguration struct {
-	Username      string
-	Password      string
+	Username string
+	Password string
 }
 
 type TlsConfiguration struct {

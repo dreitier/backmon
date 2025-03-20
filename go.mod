@@ -1,7 +1,7 @@
 module github.com/dreitier/backmon
 
 require (
-	code.cloudfoundry.org/bytefmt v0.0.0-20180906201452-2aa6f33b730c
+	code.cloudfoundry.org/bytefmt v0.33.0
 	github.com/aws/aws-sdk-go v1.55.6
 	github.com/davecgh/go-spew v1.1.1
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
@@ -23,16 +23,14 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
-	github.com/onsi/gomega v1.19.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 )
 
-go 1.21
+go 1.23.0
 
 toolchain go1.23.7

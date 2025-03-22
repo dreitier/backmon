@@ -39,7 +39,7 @@ jobs:
         path: '/app/backmon'
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: backmon
         path: ${{ steps.extract.outputs.destination }}

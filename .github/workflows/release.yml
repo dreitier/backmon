@@ -33,10 +33,11 @@ jobs:
 
     - name: Extract binary image from previously build docker image
       id: extract
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v3
       with:
         image: 'dreitier/backmon:${{ steps.publish_to_registry.outputs.tag }}'
         path: '/app/backmon'
+        destination: backmon
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

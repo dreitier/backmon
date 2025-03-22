@@ -25,6 +25,10 @@ var (
 	ignoreFile = &fs.FileInfo{Name: ".backmonignore"}
 )
 
+const (
+	maxDirDepth uint64 = 100
+)
+
 func InitializeConfiguration() {
 	envs := config.GetInstance().Environments()
 	for _, env := range envs {
@@ -135,7 +139,8 @@ type DiskData struct {
 	SafeName        string
 	metrics         *metrics.DiskMetric
 	groups          []map[string][]*fs.FileInfo
-	Definition      backup.Definition
+	quota           uint64
+	Definition      *backup.Definition
 	definitionsHash [sha1.Size]byte
 }
 
@@ -168,8 +173,13 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 		return
 	}
 
+	if len(disk.Definition.Directories) == 0 {
+		log.Warnf("Backup definitions in '%s' has no directories.", disk.Name)
+	}
+
 	disk.metrics.DefinitionsUpdated()
-	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition))
+	disk.metrics.UpdateDiskQuota(disk.Definition.Quota)
+	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition.Directories))
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -195,10 +205,14 @@ func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
 	return changed, nil
 }
 
-func (disk *DiskData) maxDepth() uint {
-	maxDepth := uint(0)
-	for _, dir := range disk.Definition {
-		depth := uint(len(dir.Filter.Layers))
+func (disk *DiskData) maxDepth() uint64 {
+	if disk.Definition == nil {
+		return maxDirDepth
+	}
+
+	maxDepth := uint64(0)
+	for _, dir := range disk.Definition.Directories {
+		depth := uint64(len(dir.Filter.Layers))
 		if depth > maxDepth {
 			maxDepth = depth
 		}
@@ -215,7 +229,7 @@ type TemporalFile struct {
 type FileGroup []TemporalFile
 type FileLookup map[string][]FileGroup
 
-// BEGIN The following Methods for FileGroup have to be implemented for sort.Interface
+// Len BEGIN The following Methods for FileGroup have to be implemented for sort.Interface
 // Len is the number of elements in the collection.
 func (list FileGroup) Len() int {
 	return len(list)
@@ -269,35 +283,34 @@ func UpdateDiskInfo() {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for environmentName, client := range clients {
+	for environmentName, cd := range clients {
 		log.Debugf("[env:%s] Updating disks", environmentName)
 
-		if err := client.updateDiskInfo(environmentName); err != nil {
-			log.Errorf("[env:%s] Could not retrieve disk names from client: %v", environmentName, err)
+		if err := cd.updateDiskInfo(environmentName); err != nil {
+			log.Errorf("[env:%s] Could not retrieve disk names from cd: %v", environmentName, err)
 			continue
 		}
 
-		for diskName, disk := range client.Disks {
+		for diskName, disk := range cd.Disks {
 			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
 
-			buf, err := client.Client.Download(diskName, client.Definition)
+			buf, err := cd.Client.Download(diskName, cd.Definition)
 			if err != nil {
-				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, client.DefinitionFilename, err)
+				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, cd.DefinitionFilename, err)
 				disk.metrics.DefinitionsMissing()
-				continue
+			} else {
+				disk.updateDefinitions(buf)
+				_ = buf.Close()
 			}
 
-			disk.updateDefinitions(buf)
-			_ = buf.Close()
-
-			files, err := client.Client.GetFileNames(diskName, disk.maxDepth())
+			files, err := cd.Client.GetFileNames(diskName, disk.maxDepth())
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
 				// don't just return, we still need to update the metrics!
 				files = &fs.DirectoryInfo{Name: diskName}
 			}
 
-			updateMetrics(client.Client, disk, files)
+			updateMetrics(cd.Client, disk, files)
 		}
 	}
 
@@ -308,7 +321,15 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 	log.Debugf("Updating metrics ...")
 
 	now := time.Now()
-	for iDir, dirDef := range disk.Definition {
+
+	objectCountTotal, objectSizeTotal := gatherDirUsageStats(root, uint64(0), uint64(0))
+	disk.metrics.UpdateUsageStats(objectCountTotal, objectSizeTotal)
+
+	if disk.Definition == nil {
+		return
+	}
+
+	for iDir, dirDef := range disk.Definition.Directories {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))
 		fileGroups := make(FileLookup, len(dirDef.Files))
@@ -567,7 +588,7 @@ func collectMatchingFiles(
 			case backup.SortByArchivedAt:
 				sortByTime = &file.ArchivedAt
 				break
-			// by default we are using the interpolated timestamp
+			// by default, we are using the interpolated timestamp
 			default:
 				sortByTime = file.InterpolatedTimestamp
 			}
@@ -667,17 +688,17 @@ func findGroups(
 
 	var dirI int
 
-	for dirI = 0; dirI < len(disk.Definition); dirI++ {
-		if disk.Definition[dirI].Alias == directoryName {
+	for dirI = 0; dirI < len(disk.Definition.Directories); dirI++ {
+		if disk.Definition.Directories[dirI].Alias == directoryName {
 			break
 		}
 	}
 
-	if dirI >= len(disk.Definition) {
+	if dirI >= len(disk.Definition.Directories) {
 		return nil, 0
 	}
 
-	dir := disk.Definition[dirI]
+	dir := disk.Definition.Directories[dirI]
 	var fileI int
 
 	for fileI = 0; fileI < len(dir.Files); fileI++ {
@@ -699,21 +720,17 @@ func FindDisk(diskName string) *DiskData {
 	return nil
 }
 
-func FindDirectory(
-	diskName string,
-	directoryName string,
-) *backup.Directory {
-	disk := FindDisk(diskName)
+// gatherDirUsageStats returns the count and total size of all objects inside a directory
+func gatherDirUsageStats(dir *fs.DirectoryInfo, objectCount uint64, objectSizeSum uint64) (uint64, uint64) {
 
-	if disk == nil {
-		return nil
+	for _, file := range dir.Files {
+		objectSizeSum += uint64(file.Size)
+		objectCount++
 	}
 
-	for _, dir := range disk.Definition {
-		if dir.Alias == directoryName {
-			return dir
-		}
+	for _, subDir := range dir.SubDirs {
+		objectCount, objectSizeSum = gatherDirUsageStats(subDir, objectCount, objectSizeSum)
 	}
 
-	return nil
+	return objectCount, objectSizeSum
 }

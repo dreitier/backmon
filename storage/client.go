@@ -9,7 +9,7 @@ import (
 
 type Client interface {
 	GetDiskNames() ([]string, error)
-	GetFileNames(disk string, maxDepth uint) (*fs.DirectoryInfo, error)
+	GetFileNames(disk string, maxDepth uint64) (*fs.DirectoryInfo, error)
 	Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error)
 	Delete(disk string, file *fs.FileInfo) error
 }
@@ -22,6 +22,8 @@ func NewClient(config *config.ClientConfiguration) Client {
 			AccessKey:         config.AccessKey,
 			SecretKey:         config.SecretKey,
 			Endpoint:          config.Endpoint,
+			Insecure:          config.Insecure,
+			TLSSkipVerify:     config.TLSSkipVerify,
 			ForcePathStyle:    config.ForcePathStyle,
 			Token:             config.Token,
 			AutoDiscoverDisks: config.AutoDiscoverDisks,

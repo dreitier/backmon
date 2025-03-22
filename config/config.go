@@ -88,7 +88,7 @@ func (c *Configuration) Http() *HttpConfiguration {
 	return c.http
 }
 
-// Create a new configuration from default configuration files
+// CreateFromConfigurationFiles Create a new configuration from default configuration files
 func CreateFromConfigurationFiles() *Configuration {
 	var file *os.File = nil
 	var err error = nil
@@ -126,19 +126,19 @@ func CreateFromConfigurationFiles() *Configuration {
 	return NewConfigurationInstance(cfg)
 }
 
-// Parse all section
+// NewConfigurationInstance Parse all section
 func NewConfigurationInstance(cfg Raw) *Configuration {
 	var r *Configuration
 
-	var globalConfiguration *GlobalConfiguration = parseGlobalSection(cfg)
-	var httpConfiguration *HttpConfiguration = parseHttpSection(cfg.Sub("http"))
-	var downloadsConfiguration *DownloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
-	var environmentsConfiguration []*EnvironmentConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
-	
+	var globalConfiguration = parseGlobalSection(cfg)
+	var httpConfiguration = parseHttpSection(cfg.Sub("http"))
+	var downloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
+	var environmentsConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
+
 	r = &Configuration{
-		global: globalConfiguration,
-		http: httpConfiguration,
-		downloads: downloadsConfiguration,
+		global:       globalConfiguration,
+		http:         httpConfiguration,
+		downloads:    downloadsConfiguration,
 		environments: environmentsConfiguration,
 	}
 
@@ -383,6 +383,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	var c *ClientConfiguration
 	const paramRegion = "region"
 	const paramForcePathStyle = "force_path_style"
+	const paramInsecure = "insecure"
+	const paramTLSSkipVerify = "tls_skip_verify"
 	const paramAccessKeyId = "access_key_id"
 	const paramSecretAccessKey = "secret_access_key"
 	const paramEndpoint = "endpoint"
@@ -396,39 +398,57 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			return nil, errors.New("parameter 'path' has been set, but is empty")
 		}
 
+		var disks = ParseDisksSection(cfg.Sub("disks"))
+
 		c = &ClientConfiguration{
 			Directory: path,
 			EnvName:   envName,
+			Disks:     disks,
 		}
-	} else {
+	} else if cfg.Has("s3") {
+		s3Cfg := cfg.Sub("s3")
 		region := "eu-central-1"
-		if cfg.Has(paramRegion) {
-			region = cfg.String(paramRegion)
+		if s3Cfg.Has(paramRegion) {
+			region = s3Cfg.String(paramRegion)
 		}
 
 		forcePathStyle := false
-		if cfg.Has(paramForcePathStyle) {
-			forcePathStyle = cfg.Bool(paramForcePathStyle)
+		if s3Cfg.Has(paramForcePathStyle) {
+			forcePathStyle = s3Cfg.Bool(paramForcePathStyle)
+		}
+
+		insecure := false
+		if s3Cfg.Has(paramInsecure) {
+			insecure = s3Cfg.Bool(paramInsecure)
+		}
+
+		tlsSkipVerify := false
+		if s3Cfg.Has(paramTLSSkipVerify) {
+			tlsSkipVerify = s3Cfg.Bool(paramTLSSkipVerify)
 		}
 
 		autoDiscoverDisks := true
 		var disks = ParseDisksSection(cfg.Sub("disks"))
 
-		if cfg.Has(paramAutoDiscoverDisks) {
-			autoDiscoverDisks = cfg.Bool(paramAutoDiscoverDisks)
+		if s3Cfg.Has(paramAutoDiscoverDisks) {
+			autoDiscoverDisks = s3Cfg.Bool(paramAutoDiscoverDisks)
 		}
 
 		c = &ClientConfiguration{
 			EnvName:           envName,
 			Region:            region,
 			ForcePathStyle:    forcePathStyle,
-			AccessKey:         cfg.String(paramAccessKeyId),
-			SecretKey:         cfg.String(paramSecretAccessKey),
-			Endpoint:          cfg.String(paramEndpoint),
-			Token:             cfg.String(paramToken),
+			Insecure:          insecure,
+			TLSSkipVerify:     tlsSkipVerify,
+			AccessKey:         s3Cfg.String(paramAccessKeyId),
+			SecretKey:         s3Cfg.String(paramSecretAccessKey),
+			Endpoint:          s3Cfg.String(paramEndpoint),
+			Token:             s3Cfg.String(paramToken),
 			AutoDiscoverDisks: autoDiscoverDisks,
 			Disks:             disks,
 		}
+	} else {
+		return nil, errors.New(fmt.Sprintf("no supported storage configuration found for environment %s", envName))
 	}
 
 	definitions := "backup_definitions.yaml"

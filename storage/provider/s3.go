@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -11,7 +12,7 @@ import (
 	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -23,6 +24,8 @@ type S3Client struct {
 	Token             string
 	Region            string
 	Endpoint          string
+	Insecure          bool
+	TLSSkipVerify     bool
 	ForcePathStyle    bool
 	EnvName           string
 	s3Client          *s3.S3
@@ -53,6 +56,18 @@ func getClient(c *S3Client) (*s3.S3, error) {
 		cfg.Endpoint = aws.String(c.Endpoint)
 	}
 
+	if c.Insecure {
+		cfg.DisableSSL = aws.Bool(true)
+	}
+
+	if c.TLSSkipVerify {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr}
+		cfg.HTTPClient = client
+	}
+
 	sess, err := session.NewSession(&cfg)
 
 	if err != nil {
@@ -65,20 +80,14 @@ func getClient(c *S3Client) (*s3.S3, error) {
 }
 
 // GetFileNames TODO: do something smart with unused parameter maxDepth
-func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	svc, err := getClient(c)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 
-	// get items from the diskName
-	result, err := svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
-	}
-
-	log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
+	var continuationToken *string
 
 	bucketRoot := &fs.DirectoryInfo{
 		Name:    diskName,
@@ -87,11 +96,9 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 
 	dotStatFiles := make(map[string] /* path to regular file*/ string /* path to .stat file */)
 
-	c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
-
-	// if the diskName held more than $maxKeys items, fetch them until we got them all
-	for *result.IsTruncated {
-		result, err = svc.ListObjects(&s3.ListObjectsInput{Bucket: &diskName, Marker: result.NextMarker})
+	for {
+		// get items from the diskName
+		result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: &diskName, ContinuationToken: continuationToken})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
@@ -100,6 +107,12 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 		log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
 
 		c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
+
+		if !*result.IsTruncated {
+			break
+		}
+
+		continuationToken = result.NextContinuationToken
 	}
 
 	dotstat.ApplyDotStatValuesRecursively(dotStatFiles, bucketRoot)
@@ -108,7 +121,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryIn
 	return bucketRoot, nil
 }
 
-// Clean up files which have been temporary downloaded for .stat introspection
+// Clean up files which have been temporarily downloaded for .stat introspection
 func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
 	for _, pathToDotStatFile := range *dotStatFiles {
 		log.Debugf("Removing temporary file %s", pathToDotStatFile)
@@ -149,8 +162,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			s3PathToStatFile := parentPath + "/" + fileName
 			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile)
 
-			// TODO fix deprecation
-			tempFile, err := ioutil.TempFile(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+			tempFile, err := os.CreateTemp(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
 
 			if err != nil {
 				log.Errorf("Unable to create temporary file for .stat: %s", err)
@@ -162,8 +174,7 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 			// .stat files are registered for later examination
 			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
 			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
-			// TODO: fix deprecation
-			byteStreamContent, _ := ioutil.ReadAll(s3OutObject.Body)
+			byteStreamContent, _ := io.ReadAll(s3OutObject.Body)
 
 			_, err = tempFile.Write(byteStreamContent)
 			if err != nil {

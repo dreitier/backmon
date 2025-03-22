@@ -9,7 +9,15 @@ import (
 	"time"
 )
 
-type RawDefinition map[string]*RawDirectory
+const (
+	keyDirectories = "directories"
+	keyQuotas      = "quota"
+)
+
+type RawDefinition struct {
+	quota       string
+	directories map[string]*RawDirectory
+}
 
 type RawDirectory struct {
 	Alias    string
@@ -35,27 +43,34 @@ type RawFile struct {
 	Purge          bool
 }
 
-func ParseRawDefinitions(definitionsReader io.Reader) (RawDefinition, error) {
+func ParseRawDefinitions(definitionsReader io.Reader) (*RawDefinition, error) {
 	cfg, err := config.Parse(definitionsReader)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse definitions file: %v", err)
 	}
 
-	parsed := make(RawDefinition)
+	var parsed RawDefinition
+	parsed.directories = make(map[string]*RawDirectory)
 
-	for dirName := range cfg {
-		dirConfig := cfg.Sub(dirName)
-		dir, err := parseDirectorySection(dirConfig, dirName)
+	if cfg.Has(keyDirectories) {
+		for dirName := range cfg.Sub(keyDirectories) {
+			dirConfig := cfg.Sub(keyDirectories).Sub(dirName)
+			dir, err := parseDirectorySection(dirConfig, dirName)
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+
+			parsed.directories[dirName] = dir
 		}
-
-		parsed[dirName] = dir
 	}
 
-	return parsed, nil
+	if cfg.Has(keyQuotas) {
+		parsed.quota = cfg.String(keyQuotas)
+	}
+
+	return &parsed, nil
 }
 
 func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {

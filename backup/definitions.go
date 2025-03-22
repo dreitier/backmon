@@ -9,6 +9,7 @@ import (
 	"github.com/gorhill/cronexpr"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"kythe.io/kythe/go/util/datasize"
 	"regexp"
 	"strings"
 	"time"
@@ -36,21 +37,49 @@ var (
 	variableExp       = regexp.MustCompile(`\\\$\\\{(?P<var>\w+)(?:\:(?P<op>[a-zA-Z]*))?\\\}`)
 )
 
-func ParseDefinition(definitionsReader io.Reader) (Definition, error) {
+func ParseDefinition(definitionsReader io.Reader) (*Definition, error) {
 	raw, err := ParseRawDefinitions(definitionsReader)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return parseDirectories(raw)
+	var def Definition
+
+	def.Quota, err = parseQuota(raw)
+
+	if err != nil {
+		log.Errorf("error parsing quota %s", err)
+	}
+
+	def.Directories, err = parseDirectories(raw)
+
+	if err != nil {
+		log.Errorf("error parsing directories %s", err)
+	}
+
+	return &def, nil
 }
 
-func parseDirectories(raw RawDefinition) ([]*Directory, error) {
-	r := make([]*Directory, 0, len(raw))
+func parseQuota(raw *RawDefinition) (uint64, error) {
+	if raw.quota == "" {
+		return 0, nil
+	}
+	quota, err := datasize.Parse(raw.quota)
+
+	if err != nil {
+		log.Errorf("error parsing quota %s", err)
+		return 0, err
+	}
+
+	return quota.Bytes(), nil
+}
+
+func parseDirectories(raw *RawDefinition) ([]*Directory, error) {
+	r := make([]*Directory, 0, len(raw.directories))
 	aliases := make(map[string]empty)
 
-	for directoryPathPattern, rawDir := range raw {
+	for directoryPathPattern, rawDir := range raw.directories {
 		// find placeholders
 		filter, variableOffsets := ParsePathPattern(directoryPathPattern)
 
@@ -538,7 +567,10 @@ func ParseFilePattern(pattern string) (*regexp.Regexp, error) {
 	return regexp.Compile(expression)
 }
 
-type Definition []*Directory
+type Definition struct {
+	Quota       uint64
+	Directories []*Directory
+}
 
 type Directory struct {
 	Alias        string

@@ -9,7 +9,8 @@ import (
 
 const (
 	namespace             = "backmon"
-	subsystem             = "backup"
+	subsystemDefinition   = "definition"
+	subsystemBackup       = "backup"
 	subsystemEnvironments = "environments"
 	subsystemDisks        = "disks"
 )

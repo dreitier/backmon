@@ -12,7 +12,7 @@ You can easily integrate *backmon* into your Prometheus- and Grafana-based infra
 You can find our official documentation at [https://dreitier.github.io/backmon-docs](https://dreitier.github.io/backmon-docs).
 
 ### Dependencies
-During build time, *backmon* requires Go 1.18 or later.
+During build time, *backmon* requires Go 1.24 or later.
 
 ### Helm
 We provide a Helm chart for *backmon* which you can easily install:

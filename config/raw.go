@@ -3,8 +3,10 @@ package config
 import (
 	"code.cloudfoundry.org/bytefmt"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -40,6 +42,7 @@ type Raw map[string]interface{}
 func ParseFromString(content string) (Raw, error) {
 	var out map[string]interface{}
 	if err := yaml.Unmarshal([]byte(content), &out); err != nil {
+		log.Fatalf("Failed to parse configuration file: %v", err)
 		return nil, err
 	}
 	return out, nil
@@ -82,7 +85,7 @@ func (c Raw) Has(key string) bool {
 }
 
 func (c Raw) String(key string) string {
-	return asString(c[key])
+	return interpolate(asString(c[key]))
 }
 
 func (c Raw) StringSlice(key string) []string {
@@ -275,4 +278,17 @@ func asBool(val interface{}) bool {
 		}
 	}
 	return false
+}
+
+func interpolate(s string) string {
+	r := regexp.MustCompile(`^__\${(\w+)}__$`)
+	m := r.FindStringSubmatch(s)
+
+	if len(m) <= 1 {
+		return s
+	}
+
+	v := os.Getenv(m[1])
+
+	return v
 }

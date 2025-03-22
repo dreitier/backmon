@@ -32,7 +32,7 @@ func printVersion() {
 
 func main() {
 	flag.Parse()
-	configureLogrus()
+	configureLogger()
 	configureTerminal()
 	configureSignals()
 	printVersion()
@@ -83,7 +83,7 @@ func configureTerminal() {
 				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-					// handlq exiting
+					// handle exiting
 				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
 					log.Printf("Exiting...")
 					termbox.Close()
@@ -91,14 +91,16 @@ func configureTerminal() {
 				}
 			case termbox.EventError:
 				panic(ev.Err)
+			default:
+				log.Tracef("unhandled default case %v", ev)
 			}
 		}
 	}()
 }
 
-func configureLogrus() {
+func configureLogger() {
 	customFormatter := new(log.TextFormatter)
-	customFormatter.TimestampFormat = "2022-08-02 20:22:05"
+	customFormatter.TimestampFormat = time.RFC3339
 	customFormatter.FullTimestamp = true
 	log.SetFormatter(customFormatter)
 }

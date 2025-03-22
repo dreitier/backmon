@@ -1,12 +1,16 @@
-backups:
-  alias: my-backups
-  fuse:
-  defaults:
-    schedule: 0 2 * * *
-    retention-count: 10
-    retention-age: 7d
-  files:
-    dump-%Y%M%D.sql:
-      alias: pgdump
-      schedule: 0 1 * * *
-      sort: interpolation
+---
+quota: 2GiB
+directories:
+  backups:
+    alias: my-backups
+    fuse:
+    defaults:
+      schedule: 0 2 * * *
+      retention-count: 10
+      retention-age: 7d
+    files:
+      dump-%Y%M%D.sql:
+        alias: pgdump
+        schedule: 0 1 * * *
+        sort: interpolation
+...

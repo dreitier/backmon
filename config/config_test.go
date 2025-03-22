@@ -1,7 +1,7 @@
 package config
 
 import (
-//	"github.com/davecgh/go-spew/spew"
+	//	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,7 +15,8 @@ port: 8080
 http:
 environments:
   default:
-    region: eu-central-2
+    s3:
+      region: eu-central-2
 `)
 	sut := NewConfigurationInstance(raw)
 
@@ -33,15 +34,16 @@ http:
 environments:
   default:
     disks:
-    auto_disocver_disks: true
+    s3:
+      auto_discover_disks: false
 `)
 	sut := NewConfigurationInstance(raw)
 
 	assertion.NotNil(sut)
 	assertion.Equal(1, len(sut.Environments()))
-	assertion.True(sut.Environments()[0].Client.AutoDiscoverDisks)
+	assertion.False(sut.Environments()[0].Client.AutoDiscoverDisks)
 
-	var diskCfg *DisksConfiguration = sut.Environments()[0].Client.Disks 
+	diskCfg := sut.Environments()[0].Client.Disks
 
 	assertion.Equal(0, len(diskCfg.include))
 	assertion.Equal(0, len(diskCfg.exclude))
@@ -57,6 +59,7 @@ port: 8080
 
 environments:
   default:
+    s3:
     disks:
       include:
         - included-1
@@ -68,7 +71,7 @@ environments:
 	assertion.NotNil(sut)
 	assertion.Equal(1, len(sut.Environments()))
 
-	var diskCfg *DisksConfiguration = sut.Environments()[0].Client.Disks 
+	var diskCfg *DisksConfiguration = sut.Environments()[0].Client.Disks
 	assertion.NotNil(diskCfg)
 
 	assertion.Equal(1, len(diskCfg.include))

@@ -5,12 +5,13 @@ import (
 	"github.com/gorhill/cronexpr"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"math"
 	"os"
 	"testing"
 	"time"
 )
 
-func Test_parseDefinitions(t *testing.T) {
+func Test_parseRawDefinitions(t *testing.T) {
 	assertion := assert.New(t)
 	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions.yaml")
 
@@ -18,7 +19,9 @@ func Test_parseDefinitions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer definitionsFile.Close()
+	defer func(definitionsFile *os.File) {
+		_ = definitionsFile.Close()
+	}(definitionsFile)
 
 	reader := io.Reader(definitionsFile)
 
@@ -29,18 +32,56 @@ func Test_parseDefinitions(t *testing.T) {
 	}
 
 	if defs == nil {
-		t.Error("parsed definitions object is nil")
+		t.Fatalf("parsed definitions object is nil")
 	}
 
-	assertion.Equal("my-backups", defs["backups"].Alias)
-	assertion.Equal(cronexpr.MustParse("0 2 * * *"), defs["backups"].Defaults.Schedule)
-	assertion.Equal(uint64(10), defs["backups"].Defaults.RetentionCount)
-	assertion.Equal(7*24*time.Hour, defs["backups"].Defaults.RetentionAge)
-	assertion.Equal(false, defs["backups"].Defaults.Purge)
-	assertion.Equal("pgdump", defs["backups"].Files["dump-%Y%M%D.sql"].Alias)
-	assertion.Equal(cronexpr.MustParse("0 1 * * *"), defs["backups"].Files["dump-%Y%M%D.sql"].Schedule)
-	assertion.Equal(uint64(10), defs["backups"].Files["dump-%Y%M%D.sql"].RetentionCount)
-	assertion.Equal(7*24*time.Hour, defs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
+	quota := defs.quota
+	dirs := defs.directories
+
+	assertion.Equal(quota, "2GiB")
+	assertion.Equal("my-backups", dirs["backups"].Alias)
+	assertion.Equal("my-backups", dirs["backups"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 2 * * *"), dirs["backups"].Defaults.Schedule)
+	assertion.Equal(uint64(10), dirs["backups"].Defaults.RetentionCount)
+	assertion.Equal(7*24*time.Hour, dirs["backups"].Defaults.RetentionAge)
+	assertion.Equal(false, dirs["backups"].Defaults.Purge)
+	assertion.Equal("pgdump", dirs["backups"].Files["dump-%Y%M%D.sql"].Alias)
+	assertion.Equal(cronexpr.MustParse("0 1 * * *"), dirs["backups"].Files["dump-%Y%M%D.sql"].Schedule)
+	assertion.Equal(uint64(10), dirs["backups"].Files["dump-%Y%M%D.sql"].RetentionCount)
+	assertion.Equal(7*24*time.Hour, dirs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
+}
+
+func Test_parseDefinitions(t *testing.T) {
+	assertion := assert.New(t)
+	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions.yaml")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func(definitionsFile *os.File) {
+		_ = definitionsFile.Close()
+	}(definitionsFile)
+
+	reader := io.Reader(definitionsFile)
+
+	defs, err := ParseDefinition(reader)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if defs == nil {
+		t.Fatalf("parsed definitions object is nil")
+	}
+
+	quota := defs.Quota
+	dirs := defs.Directories
+	assertion.Equal(quota, uint64(2*math.Pow(2, 30)))
+	assertion.True(len(dirs) > 0)
+	assertion.Equal("my-backups", dirs[0].Alias)
+	assertion.NotNil(dirs[0].Filter)
+	assertion.True(len(dirs[0].Files) > 0)
 }
 
 func Test_parseFaultyDefinitions_expectError(t *testing.T) {

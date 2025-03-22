@@ -7,7 +7,6 @@ import (
 	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,7 +18,7 @@ type LocalClient struct {
 	EnvName   string
 }
 
-func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func (c *LocalClient) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	if diskName != c.Directory {
 		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", diskName))
 	}
@@ -27,14 +26,13 @@ func (c *LocalClient) GetFileNames(diskName string, maxDepth uint) (*fs.Director
 	return scanDir(diskName, "", "", maxDepth)
 }
 
-func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint) (*fs.DirectoryInfo, error) {
+func scanDir(root string, fullSubdirectoryPath string, directoryName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	currentSubdirectoryPath := filepath.Join(fullSubdirectoryPath, directoryName)
 	absoluteSubdirectoryPath := filepath.Join(root, currentSubdirectoryPath)
-	// TODO: fix deprecation
-	fileInfos, err := ioutil.ReadDir(absoluteSubdirectoryPath)
+	dirEntries, err := os.ReadDir(absoluteSubdirectoryPath)
 
 	if err != nil {
-		//TODO: log error
+		log.Errorf("Failed to scan directory %s, %v", absoluteSubdirectoryPath, err)
 		return nil, err
 	}
 
@@ -45,27 +43,34 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 
 	dotStatFiles := make(map[string]string)
 
-	for _, fileInfo := range fileInfos {
-		// if current item is a directory, go recursively into it
-		if fileInfo.IsDir() {
+	for _, dirEntry := range dirEntries {
+		// if current item is a directory, scanning it recursively
+		if dirEntry.IsDir() {
 			if maxDepth < 1 {
 				continue
 			}
 
-			subDir, subErr := scanDir(root, currentSubdirectoryPath, fileInfo.Name(), maxDepth-1)
+			subDir, subErr := scanDir(root, currentSubdirectoryPath, dirEntry.Name(), maxDepth-1)
 
 			if subErr == nil {
 				directoryContainer.SubDirs[subDir.Name] = subDir
 			}
-		} else if dotstat.IsStatFile(fileInfo.Name()) {
-			pathToStatFile := absoluteSubdirectoryPath + "/" + fileInfo.Name()
+		} else if dotstat.IsStatFile(dirEntry.Name()) {
+			pathToStatFile := absoluteSubdirectoryPath + "/" + dirEntry.Name()
 			pathToNonStatFile := dotstat.RemoveDotStatSuffix(pathToStatFile)
 			// .stat files are registered for later examination
 			dotStatFiles[pathToNonStatFile] = pathToStatFile
 			log.Debugf("Adding .stat file %s for %s", pathToStatFile, pathToNonStatFile)
 		} else {
+			fileInfo, err := dirEntry.Info()
+
+			if err != nil {
+				log.Errorf("Failed to get file info for %s, %v", dirEntry.Name(), err)
+				continue
+			}
+
 			file := &fs.FileInfo{
-				Name:       fileInfo.Name(),
+				Name:       dirEntry.Name(),
 				Parent:     absoluteSubdirectoryPath,
 				BornAt:     fileInfo.ModTime(),
 				ModifiedAt: fileInfo.ModTime(),

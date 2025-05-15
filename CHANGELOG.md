@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2025-05-15
+
+### Added
+
+- Templates are now supported in the config file. For example, the following is now possible:
+```yaml
+endpoint: "__${S3_ENDPOINT_HOST}__:__${S3_ENDPOINT_PORT}__"
+```
+
 ## [3.0.0] - 2025-03-14
 
 ### Changed

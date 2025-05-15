@@ -281,14 +281,26 @@ func asBool(val interface{}) bool {
 }
 
 func interpolate(s string) string {
-	r := regexp.MustCompile(`^__\${(\w+)}__$`)
-	m := r.FindStringSubmatch(s)
+	r := regexp.MustCompile(`__\${(\w+)}__`)
+	m := r.FindAllStringSubmatch(s, -1)
 
-	if len(m) <= 1 {
+	if len(m) < 1 {
 		return s
 	}
 
-	v := os.Getenv(m[1])
+	for _, placeholder := range m {
+		replacement := os.Getenv(placeholder[1])
 
-	return v
+		if replacement == "" {
+			log.Errorf("Variable '%s' requested by interpolation was not found in environment", placeholder[1])
+		} else {
+			log.Debugf("Replacing __${%s}__ with '%s'", placeholder[1], replacement)
+		}
+
+		str := "__\\${" + placeholder[1] + "}__"
+		r = regexp.MustCompile(str)
+		s = r.ReplaceAllString(s, replacement)
+	}
+
+	return s
 }

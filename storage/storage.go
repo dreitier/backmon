@@ -287,7 +287,7 @@ func UpdateDiskInfo() {
 		log.Debugf("[env:%s] Updating disks", environmentName)
 
 		if err := cd.updateDiskInfo(environmentName); err != nil {
-			log.Errorf("[env:%s] Could not retrieve disk names from cd: %v", environmentName, err)
+			log.Errorf("[env:%s] Could not retrieve disk names from client: %v", environmentName, err)
 			continue
 		}
 

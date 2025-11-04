@@ -1,10 +1,11 @@
 package storage
 
 import (
+	"io"
+
 	"github.com/dreitier/backmon/config"
 	fs "github.com/dreitier/backmon/storage/fs"
-	provider "github.com/dreitier/backmon/storage/provider"
-	"io"
+	"github.com/dreitier/backmon/storage/provider"
 )
 
 type Client interface {
@@ -22,7 +23,6 @@ func NewClient(config *config.ClientConfiguration) Client {
 			AccessKey:         config.AccessKey,
 			SecretKey:         config.SecretKey,
 			Endpoint:          config.Endpoint,
-			Insecure:          config.Insecure,
 			TLSSkipVerify:     config.TLSSkipVerify,
 			ForcePathStyle:    config.ForcePathStyle,
 			Token:             config.Token,

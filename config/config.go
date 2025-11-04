@@ -376,14 +376,13 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		return nil, errors.New("missing environment name")
 	}
 
-	if cfg == nil || envName == "" {
+	if cfg == nil {
 		return nil, errors.New("missing environment configuration entries")
 	}
 
 	var c *ClientConfiguration
 	const paramRegion = "region"
 	const paramForcePathStyle = "force_path_style"
-	const paramInsecure = "insecure"
 	const paramTLSSkipVerify = "tls_skip_verify"
 	const paramAccessKeyId = "access_key_id"
 	const paramSecretAccessKey = "secret_access_key"
@@ -417,11 +416,6 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			forcePathStyle = s3Cfg.Bool(paramForcePathStyle)
 		}
 
-		insecure := false
-		if s3Cfg.Has(paramInsecure) {
-			insecure = s3Cfg.Bool(paramInsecure)
-		}
-
 		tlsSkipVerify := false
 		if s3Cfg.Has(paramTLSSkipVerify) {
 			tlsSkipVerify = s3Cfg.Bool(paramTLSSkipVerify)
@@ -438,7 +432,6 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			EnvName:           envName,
 			Region:            region,
 			ForcePathStyle:    forcePathStyle,
-			Insecure:          insecure,
 			TLSSkipVerify:     tlsSkipVerify,
 			AccessKey:         s3Cfg.String(paramAccessKeyId),
 			SecretKey:         s3Cfg.String(paramSecretAccessKey),

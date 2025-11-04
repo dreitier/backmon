@@ -1,20 +1,25 @@
 package provider
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/dreitier/backmon/config"
-	fs "github.com/dreitier/backmon/storage/fs"
-	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+
+	cfg "github.com/dreitier/backmon/config"
+	fs "github.com/dreitier/backmon/storage/fs"
+	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
+	log "github.com/sirupsen/logrus"
 )
 
 type S3Client struct {
@@ -24,64 +29,73 @@ type S3Client struct {
 	Token             string
 	Region            string
 	Endpoint          string
-	Insecure          bool
 	TLSSkipVerify     bool
 	ForcePathStyle    bool
 	EnvName           string
-	s3Client          *s3.S3
+	s3Client          *s3.Client
 	AutoDiscoverDisks bool
-	Disks             *config.DisksConfiguration
+	Disks             *cfg.DisksConfiguration
 }
 
-func getClient(c *S3Client) (*s3.S3, error) {
+func getClient(c *S3Client) (*s3.Client, error) {
 	if c.s3Client != nil {
 		return c.s3Client, nil
 	}
 
-	cfg := aws.Config{
-		Credentials: credentials.NewStaticCredentials(c.AccessKey, c.SecretKey, c.Token),
-	}
+	var awscfg = aws.Config{}
 
-	if c.ForcePathStyle {
-		cfg.S3ForcePathStyle = aws.Bool(true)
+	if len(c.AccessKey) == 0 || len(c.SecretKey) == 0 {
+		log.Debug("No access key or secret key provided, trying to use AWS credentials.")
+
+		ctx := context.Background()
+		awscfg, err := config.LoadDefaultConfig(ctx)
+
+		if err != nil {
+			log.Errorf("unable to load SDK config, %v", err)
+			return nil, err
+		}
+
+		stsClient := sts.NewFromConfig(awscfg)
+		callerIdentity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+
+		if err != nil {
+			log.Errorf("failed to get caller identity: %v", err)
+			return nil, err
+		}
+
+		log.Debugf("Using Role ARN: %s\n", aws.ToString(callerIdentity.Arn))
+
+	} else {
+		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
 	}
 
 	if len(c.Region) > 0 {
-		cfg.Region = aws.String(c.Region)
+		awscfg.Region = c.Region
 	} else {
-		cfg.Region = aws.String("eu-central-1")
-	}
-
-	if len(c.Endpoint) > 0 {
-		cfg.Endpoint = aws.String(c.Endpoint)
-	}
-
-	if c.Insecure {
-		cfg.DisableSSL = aws.Bool(true)
+		if len(awscfg.Region) == 0 {
+			awscfg.Region = "eu-central-1"
+		}
 	}
 
 	if c.TLSSkipVerify {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-		client := &http.Client{Transport: tr}
-		cfg.HTTPClient = client
+		httpClient := &http.Client{Transport: tr}
+		awscfg.HTTPClient = httpClient
 	}
 
-	sess, err := session.NewSession(&cfg)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to build S3 client: %s", err)
-	}
-
-	c.s3Client = s3.New(sess)
+	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
+		o.UsePathStyle = c.ForcePathStyle
+		o.BaseEndpoint = aws.String(c.Endpoint)
+	})
 
 	return c.s3Client, nil
 }
 
 // GetFileNames TODO: do something smart with unused parameter maxDepth
 func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
-	svc, err := getClient(c)
+	client, err := getClient(c)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
@@ -98,7 +112,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 
 	for {
 		// get items from the diskName
-		result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: &diskName, ContinuationToken: continuationToken})
+		result, err := client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: &diskName, ContinuationToken: continuationToken})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
@@ -133,7 +147,7 @@ func (c *S3Client) cleanupTemporaryFiles(dotStatFiles *map[string] /* path to re
 	}
 }
 
-func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objects []*s3.Object, dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
+func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objects []types.Object, dotStatFiles *map[string] /* path to regular file*/ string /* path to .stat file */) {
 	for _, obj := range objects {
 		pathSegments := strings.Split(*obj.Key, "/")
 		fileName := pathSegments[len(pathSegments)-1]
@@ -206,7 +220,7 @@ func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOu
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 	getObjectInput := s3.GetObjectInput{Bucket: diskName, Key: fileName}
-	out, err := svc.GetObject(&getObjectInput)
+	out, err := svc.GetObject(context.Background(), &getObjectInput)
 
 	if err != nil {
 		return nil, err
@@ -231,11 +245,11 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 
 // Find available disks by iterating over each available bucket. That assumes that the AWS user has the IAM permission `ListAllMyBuckets`
 // @see #9
-func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.S3) ([]string, error) {
+func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.Client) ([]string, error) {
 	var r []string
 
 	log.Info("Auto-discovering disks based upon available S3 buckets...")
-	result, err := svc.ListBuckets(&s3.ListBucketsInput{})
+	result, err := svc.ListBuckets(context.Background(), &s3.ListBucketsInput{})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list S3 disks by auto discovery: %s", err)
@@ -251,7 +265,7 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.S3) ([]string, erro
 }
 
 // Find available disks by iterating over disks.include configuration parameter
-func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
+func (c *S3Client) findAvailableDisksByInclusion(svc *s3.Client) ([]string, error) {
 	var r []string
 
 	log.Info("Finding disks based upon disks.include configuration parameter...")
@@ -266,13 +280,13 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.S3) ([]string, error) {
 }
 
 // Check if objects from the bucket can be retrieved. It is basically a test for the IAM permission for GetObject
-func (c *S3Client) hasAccessToBucket(svc *s3.S3, bucketName *string) bool {
+func (c *S3Client) hasAccessToBucket(svc *s3.Client, bucketName *string) bool {
 	// don't try to list items in ignored disks
 	if !c.Disks.IsDiskIncluded(*bucketName) {
 		return false
 	}
 
-	_, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
+	_, err := svc.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
 
 	if err != nil {
 		log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", *bucketName, err)
@@ -302,7 +316,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	}
 	fullName := file.Parent + "/" + file.Name
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
-	out, err := svc.DeleteObject(&delObjectInput)
+	out, err := svc.DeleteObject(context.Background(), &delObjectInput)
 	_ = fmt.Sprint(out)
 
 	if err != nil {

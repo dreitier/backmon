@@ -1,9 +1,10 @@
 package config
 
 import (
+	"testing"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_NewSingleDiskConfiguration_GH6_detectsRegex(t *testing.T) {

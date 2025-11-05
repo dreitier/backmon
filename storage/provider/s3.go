@@ -63,7 +63,7 @@ func getClient(c *S3Client) (*s3.Client, error) {
 			return nil, err
 		}
 
-		log.Debugf("Using Role ARN: %s\n", aws.ToString(callerIdentity.Arn))
+		log.Debugf("Using Role ARN: %s", aws.ToString(callerIdentity.Arn))
 
 	} else {
 		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
@@ -87,7 +87,10 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
 		o.UsePathStyle = c.ForcePathStyle
-		o.BaseEndpoint = aws.String(c.Endpoint)
+		if len(c.Endpoint) > 0 {
+			o.BaseEndpoint = aws.String(c.Endpoint)
+		}
+
 	})
 
 	return c.s3Client, nil
@@ -214,13 +217,13 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 }
 
 func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOutput, err error) {
-	svc, err := getClient(c)
+	client, err := getClient(c)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 	getObjectInput := s3.GetObjectInput{Bucket: diskName, Key: fileName}
-	out, err := svc.GetObject(context.Background(), &getObjectInput)
+	out, err := client.GetObject(context.Background(), &getObjectInput)
 
 	if err != nil {
 		return nil, err
@@ -230,33 +233,33 @@ func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOu
 }
 
 func (c *S3Client) GetDiskNames() ([]string, error) {
-	svc, err := getClient(c)
+	client, err := getClient(c)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 
 	if c.AutoDiscoverDisks {
-		return c.findAvailableDisksByAutoDiscovery(svc)
+		return c.findAvailableDisksByAutoDiscovery(client)
 	}
 
-	return c.findAvailableDisksByInclusion(svc)
+	return c.findAvailableDisksByInclusion(client)
 }
 
 // Find available disks by iterating over each available bucket. That assumes that the AWS user has the IAM permission `ListAllMyBuckets`
 // @see #9
-func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.Client) ([]string, error) {
+func (c *S3Client) findAvailableDisksByAutoDiscovery(client *s3.Client) ([]string, error) {
 	var r []string
 
 	log.Info("Auto-discovering disks based upon available S3 buckets...")
-	result, err := svc.ListBuckets(context.Background(), &s3.ListBucketsInput{})
+	result, err := client.ListBuckets(context.Background(), &s3.ListBucketsInput{})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list S3 disks by auto discovery: %s", err)
 	}
 
 	for _, bucketAsDisk := range result.Buckets {
-		if c.hasAccessToBucket(svc, bucketAsDisk.Name) {
+		if c.hasAccessToBucket(client, bucketAsDisk.Name) {
 			r = append(r, *bucketAsDisk.Name)
 		}
 	}
@@ -265,13 +268,13 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(svc *s3.Client) ([]string, 
 }
 
 // Find available disks by iterating over disks.include configuration parameter
-func (c *S3Client) findAvailableDisksByInclusion(svc *s3.Client) ([]string, error) {
+func (c *S3Client) findAvailableDisksByInclusion(client *s3.Client) ([]string, error) {
 	var r []string
 
 	log.Info("Finding disks based upon disks.include configuration parameter...")
 
 	for keyAsBucketName := range c.Disks.GetIncludedDisks() {
-		if c.hasAccessToBucket(svc, &keyAsBucketName) {
+		if c.hasAccessToBucket(client, &keyAsBucketName) {
 			r = append(r, keyAsBucketName)
 		}
 	}
@@ -280,13 +283,13 @@ func (c *S3Client) findAvailableDisksByInclusion(svc *s3.Client) ([]string, erro
 }
 
 // Check if objects from the bucket can be retrieved. It is basically a test for the IAM permission for GetObject
-func (c *S3Client) hasAccessToBucket(svc *s3.Client, bucketName *string) bool {
+func (c *S3Client) hasAccessToBucket(client *s3.Client, bucketName *string) bool {
 	// don't try to list items in ignored disks
 	if !c.Disks.IsDiskIncluded(*bucketName) {
 		return false
 	}
 
-	_, err := svc.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
+	_, err := client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
 
 	if err != nil {
 		log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", *bucketName, err)
@@ -309,14 +312,14 @@ func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser
 
 func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	//TODO: check out the s3 delete object documentation to make this work with versioned files
-	svc, err := getClient(c)
+	client, err := getClient(c)
 
 	if err != nil {
 		return fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
 	fullName := file.Parent + "/" + file.Name
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
-	out, err := svc.DeleteObject(context.Background(), &delObjectInput)
+	out, err := client.DeleteObject(context.Background(), &delObjectInput)
 	_ = fmt.Sprint(out)
 
 	if err != nil {

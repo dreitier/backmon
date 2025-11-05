@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go/logging"
 
 	cfg "github.com/dreitier/backmon/config"
 	fs "github.com/dreitier/backmon/storage/fs"
@@ -47,15 +48,15 @@ func getClient(c *S3Client) (*s3.Client, error) {
 	if len(c.AccessKey) == 0 || len(c.SecretKey) == 0 {
 		log.Debug("No access key or secret key provided, trying to use AWS credentials.")
 
-		ctx := context.Background()
-		awscfg, err := config.LoadDefaultConfig(ctx)
+		ctx := context.TODO()
+		autoConf, err := config.LoadDefaultConfig(ctx, config.WithRegion(c.Region))
 
 		if err != nil {
 			log.Errorf("unable to load SDK config, %v", err)
 			return nil, err
 		}
 
-		stsClient := sts.NewFromConfig(awscfg)
+		stsClient := sts.NewFromConfig(autoConf)
 		callerIdentity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 
 		if err != nil {
@@ -65,16 +66,10 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 		log.Debugf("Using Role ARN: %s", aws.ToString(callerIdentity.Arn))
 
+		awscfg = autoConf
+
 	} else {
 		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
-	}
-
-	if len(c.Region) > 0 {
-		awscfg.Region = c.Region
-	} else {
-		if len(awscfg.Region) == 0 {
-			awscfg.Region = "eu-central-1"
-		}
 	}
 
 	if c.TLSSkipVerify {
@@ -85,12 +80,21 @@ func getClient(c *S3Client) (*s3.Client, error) {
 		awscfg.HTTPClient = httpClient
 	}
 
+	logger := logging.LoggerFunc(func(classification logging.Classification, format string, v ...interface{}) {
+		// your custom logging
+		log.WithField("process", "s3").Debug(v...)
+	})
+
+	awscfg.Logger = logger
+	awscfg.ClientLogMode = aws.LogRequestWithBody | aws.LogResponseWithBody
+
 	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
 		o.UsePathStyle = c.ForcePathStyle
+
 		if len(c.Endpoint) > 0 {
+			log.Debugf("Setting Endpoint to: %s", c.Endpoint)
 			o.BaseEndpoint = aws.String(c.Endpoint)
 		}
-
 	})
 
 	return c.s3Client, nil

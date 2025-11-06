@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,6 +42,11 @@ type S3Client struct {
 func getClient(c *S3Client) (*s3.Client, error) {
 	if c.s3Client != nil {
 		return c.s3Client, nil
+	}
+
+	if c.Region == "" {
+		log.Error("Region not set")
+		return nil, errors.New("region not set")
 	}
 
 	var awscfg = aws.Config{}
@@ -90,6 +96,7 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
 		o.UsePathStyle = c.ForcePathStyle
+		o.Region = c.Region
 
 		if len(c.Endpoint) > 0 {
 			log.Debugf("Setting Endpoint to: %s", c.Endpoint)
@@ -263,8 +270,11 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(client *s3.Client) ([]strin
 	}
 
 	for _, bucketAsDisk := range result.Buckets {
+		log.Infof("Discovered bucket %s", *bucketAsDisk.Name)
 		if c.hasAccessToBucket(client, bucketAsDisk.Name) {
 			r = append(r, *bucketAsDisk.Name)
+		} else {
+			log.Infof("Don't have access to bucket %s, discarding", *bucketAsDisk.Name)
 		}
 	}
 

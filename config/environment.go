@@ -12,6 +12,7 @@ type ClientConfiguration struct {
 	Region            string
 	AccessKey         string
 	SecretKey         string
+	AssumeRoleArn     string
 	Endpoint          string
 	TLSSkipVerify     bool
 	ForcePathStyle    bool

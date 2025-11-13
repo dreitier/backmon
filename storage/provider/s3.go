@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -28,6 +29,7 @@ type S3Client struct {
 	Name              string
 	AccessKey         string
 	SecretKey         string
+	AssumeRoleArn     string
 	Token             string
 	Region            string
 	Endpoint          string
@@ -72,10 +74,52 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 		log.Debugf("Using Role ARN: %s", aws.ToString(callerIdentity.Arn))
 
+		if len(c.AssumeRoleArn) > 0 {
+			log.Infof("Trying to assume role %s", c.AssumeRoleArn)
+
+			autoConf, err = config.LoadDefaultConfig(
+				context.TODO(), config.WithRegion(c.Region),
+				config.WithCredentialsProvider(aws.NewCredentialsCache(
+					stscreds.NewAssumeRoleProvider(
+						stsClient,
+						c.AssumeRoleArn,
+					)),
+				),
+			)
+
+			if err != nil {
+				log.Errorf("Failed to assume role: %v", err)
+				return nil, err
+			}
+		}
+
 		awscfg = autoConf
 
 	} else {
 		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
+		awscfg.Region = c.Region
+
+		if len(c.AssumeRoleArn) > 0 {
+			log.Infof("Trying to assume role %s", c.AssumeRoleArn)
+
+			stsClient := sts.NewFromConfig(awscfg)
+			assumeRoleCfg, err := config.LoadDefaultConfig(
+				context.TODO(), config.WithRegion(c.Region),
+				config.WithCredentialsProvider(aws.NewCredentialsCache(
+					stscreds.NewAssumeRoleProvider(
+						stsClient,
+						c.AssumeRoleArn,
+					)),
+				),
+			)
+
+			if err != nil {
+				log.Errorf("Failed to assume role: %v", err)
+				return nil, err
+			}
+
+			awscfg = assumeRoleCfg
+		}
 	}
 
 	if c.TLSSkipVerify {
@@ -274,7 +318,7 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(client *s3.Client) ([]strin
 		if c.hasAccessToBucket(client, bucketAsDisk.Name) {
 			r = append(r, *bucketAsDisk.Name)
 		} else {
-			log.Infof("Don't have access to bucket %s, discarding", *bucketAsDisk.Name)
+			log.Warnf("Don't have access to bucket %s, discarding", *bucketAsDisk.Name)
 		}
 	}
 
@@ -306,7 +350,7 @@ func (c *S3Client) hasAccessToBucket(client *s3.Client, bucketName *string) bool
 	_, err := client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: aws.String(*bucketName)})
 
 	if err != nil {
-		log.Warnf("Unable to list items in S3 bucket %q, %v; won't use it as disk", *bucketName, err)
+		log.Debugf("Unable to list items in S3 bucket %q, %v; won't use it as disk", *bucketName, err)
 		return false
 	}
 

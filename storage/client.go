@@ -22,6 +22,7 @@ func NewClient(config *config.ClientConfiguration) Client {
 			Region:            config.Region,
 			AccessKey:         config.AccessKey,
 			SecretKey:         config.SecretKey,
+			AssumeRoleArn:     config.AssumeRoleArn,
 			Endpoint:          config.Endpoint,
 			TLSSkipVerify:     config.TLSSkipVerify,
 			ForcePathStyle:    config.ForcePathStyle,

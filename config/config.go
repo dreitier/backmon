@@ -386,6 +386,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	const paramTLSSkipVerify = "tls_skip_verify"
 	const paramAccessKeyId = "access_key_id"
 	const paramSecretAccessKey = "secret_access_key"
+	const assumeRoleArn = "assume_role_arn"
 	const paramEndpoint = "endpoint"
 	const paramToken = "token"
 	const paramAutoDiscoverDisks = "auto_discover_disks"
@@ -435,6 +436,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			TLSSkipVerify:     tlsSkipVerify,
 			AccessKey:         s3Cfg.String(paramAccessKeyId),
 			SecretKey:         s3Cfg.String(paramSecretAccessKey),
+			AssumeRoleArn:     s3Cfg.String(assumeRoleArn),
 			Endpoint:          s3Cfg.String(paramEndpoint),
 			Token:             s3Cfg.String(paramToken),
 			AutoDiscoverDisks: autoDiscoverDisks,

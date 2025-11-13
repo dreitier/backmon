@@ -74,52 +74,33 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 		log.Debugf("Using Role ARN: %s", aws.ToString(callerIdentity.Arn))
 
-		if len(c.AssumeRoleArn) > 0 {
-			log.Infof("Trying to assume role %s", c.AssumeRoleArn)
-
-			autoConf, err = config.LoadDefaultConfig(
-				context.TODO(), config.WithRegion(c.Region),
-				config.WithCredentialsProvider(aws.NewCredentialsCache(
-					stscreds.NewAssumeRoleProvider(
-						stsClient,
-						c.AssumeRoleArn,
-					)),
-				),
-			)
-
-			if err != nil {
-				log.Errorf("Failed to assume role: %v", err)
-				return nil, err
-			}
-		}
-
 		awscfg = autoConf
 
 	} else {
 		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
 		awscfg.Region = c.Region
+	}
 
-		if len(c.AssumeRoleArn) > 0 {
-			log.Infof("Trying to assume role %s", c.AssumeRoleArn)
+	if len(c.AssumeRoleArn) > 0 {
+		log.Infof("Trying to assume role %s", c.AssumeRoleArn)
 
-			stsClient := sts.NewFromConfig(awscfg)
-			assumeRoleCfg, err := config.LoadDefaultConfig(
-				context.TODO(), config.WithRegion(c.Region),
-				config.WithCredentialsProvider(aws.NewCredentialsCache(
-					stscreds.NewAssumeRoleProvider(
-						stsClient,
-						c.AssumeRoleArn,
-					)),
-				),
-			)
+		stsClient := sts.NewFromConfig(awscfg)
+		assumeRoleCfg, err := config.LoadDefaultConfig(
+			context.TODO(), config.WithRegion(c.Region),
+			config.WithCredentialsProvider(aws.NewCredentialsCache(
+				stscreds.NewAssumeRoleProvider(
+					stsClient,
+					c.AssumeRoleArn,
+				)),
+			),
+		)
 
-			if err != nil {
-				log.Errorf("Failed to assume role: %v", err)
-				return nil, err
-			}
-
-			awscfg = assumeRoleCfg
+		if err != nil {
+			log.Errorf("Failed to assume role: %v", err)
+			return nil, err
 		}
+
+		awscfg = assumeRoleCfg
 	}
 
 	if c.TLSSkipVerify {

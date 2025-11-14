@@ -91,6 +91,17 @@ func getClient(c *S3Client) (*s3.Client, error) {
 				stscreds.NewAssumeRoleProvider(
 					stsClient,
 					c.AssumeRoleArn,
+					func(options *stscreds.AssumeRoleOptions) {
+						hostname, err := os.Hostname()
+
+						if err != nil {
+							log.Debugf("Unable to get hostname %v", err)
+							hostname = "unknown"
+						}
+
+						log.Infof("Setting RoleSessionName to '%s'", hostname)
+						options.RoleSessionName = hostname
+					},
 				)),
 			),
 		)

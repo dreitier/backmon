@@ -350,7 +350,14 @@ func (c *S3Client) hasAccessToBucket(client *s3.Client, bucketName *string) bool
 }
 
 func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {
-	fullName := file.Parent + "/" + file.Name
+
+	var fullName string
+
+	if file.Parent == "" {
+		fullName = file.Name
+	} else {
+		fullName = strings.TrimSuffix(file.Parent, "/") + "/" + file.Name
+	}
 	out, err := c.get(&disk, &fullName)
 
 	if err != nil {

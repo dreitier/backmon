@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.2.2] - 2025-12-10
+### Fixed
+- missing indirection in test
+- failing test when parsing YAML
+- fix memory leak when streaming large S3 files to the client
+
+### Added
+- provide content length header when downloading a file
+
 ## [3.2.1] - 2025-12-02
 
 ### Fixed

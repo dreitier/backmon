@@ -10,8 +10,11 @@ import (
 
 type Client interface {
 	GetDiskNames() ([]string, error)
+
 	GetFileNames(disk string, maxDepth uint64) (*fs.DirectoryInfo, error)
-	Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error)
+
+	Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, length int64, contentType string, err error)
+
 	Delete(disk string, file *fs.FileInfo) error
 }
 

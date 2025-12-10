@@ -98,7 +98,7 @@ func (client *clientData) updateDiskInfo(environmentName string) error {
 		_, exists := client.Disks[diskName]
 
 		// ignore disks containing a file called '.backmonignore'
-		buf, err := client.Client.Download(diskName, ignoreFile)
+		buf, _, _, err := client.Client.Download(diskName, ignoreFile)
 		if err == nil {
 			// .backmonignore found
 			_ = buf.Close()
@@ -294,7 +294,7 @@ func UpdateDiskInfo() {
 		for diskName, disk := range cd.Disks {
 			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
 
-			buf, err := cd.Client.Download(diskName, cd.Definition)
+			buf, _, _, err := cd.Client.Download(diskName, cd.Definition)
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, cd.DefinitionFilename, err)
 				disk.metrics.DefinitionsMissing()
@@ -653,11 +653,11 @@ func Download(
 	directoryName string,
 	fileName string,
 	groupName string,
-) (bytes io.ReadCloser, err error) {
+) (bytes io.ReadCloser, length int64, contentType string, err error) {
 	groups, file := findGroups(diskName, directoryName, fileName)
 
 	if groups == nil {
-		return nil, errors.New("the requested file does not exist")
+		return nil, -1, "", errors.New("the requested file does not exist")
 	}
 
 	var client *clientData
@@ -669,7 +669,7 @@ func Download(
 	}
 
 	if client == nil {
-		return nil, errors.New("the requested file does not exist")
+		return nil, -1, "", errors.New("the requested file does not exist")
 	}
 
 	return client.Client.Download(diskName, groups[groupName][file])

@@ -128,7 +128,9 @@ func getClient(c *S3Client) (*s3.Client, error) {
 	})
 
 	awscfg.Logger = logger
-	awscfg.ClientLogMode = aws.LogRequestWithBody | aws.LogResponseWithBody
+	// do NOT use aws.LogResponseWithBody:
+	// when passing-through an S3 object (retrieving an object from AWS via GetObject and streaming to the client), it would fill-up the whole memory.
+	awscfg.ClientLogMode = aws.LogRequestWithBody
 
 	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
 		o.UsePathStyle = c.ForcePathStyle
@@ -349,8 +351,7 @@ func (c *S3Client) hasAccessToBucket(client *s3.Client, bucketName *string) bool
 	return true
 }
 
-func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {
-
+func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, length int64, contentType string, err error) {
 	var fullName string
 
 	if file.Parent == "" {
@@ -358,13 +359,17 @@ func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser
 	} else {
 		fullName = strings.TrimSuffix(file.Parent, "/") + "/" + file.Name
 	}
+
 	out, err := c.get(&disk, &fullName)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to download object %s from disk %s: %s", fullName, disk, err)
+		return nil, -1, "", fmt.Errorf("failed to download object %s from disk %s: %s", fullName, disk, err)
 	}
 
-	return out.Body, nil
+	length = *out.ContentLength
+	contentType = aws.ToString(out.ContentType)
+
+	return out.Body, length, contentType, nil
 }
 
 func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {

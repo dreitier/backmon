@@ -95,18 +95,27 @@ func (c *LocalClient) GetDiskNames() ([]string, error) {
 	return diskNames, nil
 }
 
-func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, err error) {
+func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, length int64, contentType string, err error) {
 	if disk != c.Directory {
-		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", disk))
+		return nil, -1, "", errors.New(fmt.Sprintf("disk %#q does not exist", disk))
 	}
 	fileName := filepath.Join(disk, file.Parent, file.Name)
 
-	bytes, err = os.Open(fileName)
+	fileInfo, err := os.Stat(fileName)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file for reading: %s", err)
+		return nil, -1, "", err
 	}
 
-	return bytes, nil
+	length = fileInfo.Size()
+
+	bytes, err = os.Open(fileName)
+
+	if err != nil {
+		return nil, -1, "", fmt.Errorf("failed to open file for reading: %s", err)
+	}
+
+	return bytes, length, "", nil
 }
 
 func (c *LocalClient) Delete(disk string, file *fs.FileInfo) error {

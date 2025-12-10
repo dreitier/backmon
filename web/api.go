@@ -5,6 +5,7 @@ import (
 	"github.com/dreitier/backmon/backup"
 	"github.com/dreitier/backmon/storage"
 	"io"
+	"fmt"
 	"net/http"
 )
 
@@ -61,16 +62,23 @@ func Download(
 	fileName string,
 	variation string,
 ) {
-	data, err := storage.Download(diskName, directoryName, fileName, variation)
+	data, length, contentType, err := storage.Download(diskName, directoryName, fileName, variation)
 	if err != nil {
 		groupNotFound(w, variation)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachmernt; filename=\""+fileName+"\"")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", length))
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+fileName+"\"")
+
 	_, err = io.Copy(w, data)
+
 	if err != nil && err != io.EOF {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -128,7 +128,9 @@ func getClient(c *S3Client) (*s3.Client, error) {
 	})
 
 	awscfg.Logger = logger
-	awscfg.ClientLogMode = aws.LogRequestWithBody | aws.LogResponseWithBody
+	// do NOT use aws.LogResponseWithBody:
+	// when passing-through an S3 object (retrieving an object from AWS via GetObject and streaming to the client), it would fill-up the whole memory.
+	awscfg.ClientLogMode = aws.LogRequestWithBody
 
 	c.s3Client = s3.NewFromConfig(awscfg, func(o *s3.Options) {
 		o.UsePathStyle = c.ForcePathStyle

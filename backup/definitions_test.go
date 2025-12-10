@@ -5,6 +5,7 @@ import (
 	"github.com/gorhill/cronexpr"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"fmt"
 	"math"
 	"os"
 	"testing"
@@ -96,10 +97,11 @@ func Test_parseFaultyDefinitions_expectError(t *testing.T) {
 
 	reader := io.Reader(definitionsFile)
 
-	_, err = ParseRawDefinitions(reader)
+	data, err := ParseRawDefinitions(reader)
 
 	if err == nil {
-		t.Error("parsed definitions file contains an error, failure was expected")
+		fmt.Printf("%#v\n", data)
+		t.Error("parsed definitions file contains an error, failure was expected but not thrown")
 	}
 }
 

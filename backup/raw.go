@@ -160,21 +160,24 @@ func parseDefaults(cfg config.Raw) (*Defaults, error) {
 		return nil, nil
 	}
 
-	cronExprString := cfg.String("schedule")
-	log.Debugf("parsed cron expression is: %s", cronExprString)
-	schedule, err := cronexpr.Parse(cronExprString)
-
-	if err != nil {
-		log.Errorf("failed to parse cron expression [%s]: %s", cronExprString, err)
-		return nil, err
-	}
-
 	defaults := &Defaults{
-		Schedule:       schedule,
 		Sort:           cfg.String("sort"),
 		RetentionCount: cfg.Uint64("retention-count"),
 		RetentionAge:   cfg.Duration("retention-age"),
 		Purge:          cfg.Bool("purge"),
+	}
+
+	if cfg.Has("schedule") {
+		cronExprString := cfg.String("schedule")
+		log.Debugf("parsed cron expression is: %s", cronExprString)
+		schedule, err := cronexpr.Parse(cronExprString)
+
+		if err != nil {
+			log.Errorf("failed to parse cron expression [%s]: %s", cronExprString, err)
+			return nil, err
+		}
+
+		defaults.Schedule = schedule
 	}
 
 	return defaults, nil

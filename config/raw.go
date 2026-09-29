@@ -294,7 +294,8 @@ func interpolate(s string) string {
 		if replacement == "" {
 			log.Errorf("Variable '%s' requested by interpolation was not found in environment", placeholder[1])
 		} else {
-			log.Debugf("Replacing __${%s}__ with '%s'", placeholder[1], replacement)
+			// never log the replacement itself, as it usually contains credentials
+			log.Debugf("Replacing __${%s}__ with value from environment", placeholder[1])
 		}
 
 		str := "__\\${" + placeholder[1] + "}__"

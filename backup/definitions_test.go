@@ -1,13 +1,14 @@
 package backup
 
 import (
+	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorhill/cronexpr"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"fmt"
 	"math"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -319,4 +320,19 @@ func Test_parsePatternWithWildcard(t *testing.T) {
 		t.Error("Regex matched an incorrect pattern:", fileNameFail)
 	}
 
+}
+
+func Test_parseRawDefinitions_returnsError_ifFileScheduleIsInvalid(t *testing.T) {
+	definitions := `
+directories:
+  backups:
+    files:
+      dump-%Y%M%D.sql:
+        schedule: not-a-cron-expression
+`
+	data, err := ParseRawDefinitions(strings.NewReader(definitions))
+
+	if err == nil {
+		t.Errorf("expected an error for an invalid schedule, got %#v", data)
+	}
 }

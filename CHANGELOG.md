@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- BREAKING: `backmon_definition_status` now behaves as documented: `0` if the disk has been checked successfully,
+  `1` if the definitions file is missing or invalid, or the files could not be listed. Previously, `1` was reported
+  on success and `0` if the definitions were missing. Please update your alerting rules accordingly.
+- downloading and purging files in subdirectories of a local disk used a wrong path
+- purging files and reading `.stat` files in the root of an S3 bucket used a wrong object key
+- crash if a `.stat` file could not be downloaded from S3
+- crash if a file in the definitions file has an invalid `schedule`; the definitions file is now reported as invalid
+- crash when accessing the API of a disk without valid backup definitions
+- crash when downloading a group which does not exist
+- possible crash when registering the disk quota metric
+- data races between the disk update loop and the web API
+- values of environment variables have been written to the debug log during config interpolation
+- 404 responses of the API could be interpreted as HTML by browsers
+
 ## [3.2.2] - 2025-12-10
 ### Fixed
 - missing indirection in test

@@ -19,9 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// mutex guards clients and all disk data; the update loop writes, the web API reads
 var (
 	clients    = make(map[string]*clientData)
-	mutex      = &sync.Mutex{}
+	mutex      = &sync.RWMutex{}
 	ignoreFile = &fs.FileInfo{Name: ".backmonignore"}
 )
 
@@ -148,30 +149,36 @@ func (disk *DiskData) MarshalJSON() ([]byte, error) {
 	return json.Marshal(disk.Name)
 }
 
-func (disk *DiskData) updateDefinitions(data io.Reader) {
+// updateDefinitions parses the definitions file if it has changed
+// @return true if the disk has valid definitions afterwards
+func (disk *DiskData) updateDefinitions(data io.Reader) bool {
 	var buf bytes.Buffer
 
 	duplicate := io.TeeReader(data, &buf)
 	changed, err := disk.hashChanged(duplicate)
 	if err != nil {
 		log.Errorf("Failed to update backup definitions in '%s': %s", disk.Name, err)
-		disk.Definition = nil
-		disk.metrics.DefinitionsMissing()
-		return
+		disk.definitionsMissing()
+		return false
 	}
 
 	if !changed {
 		log.Debugf("Backup definitions in '%s' are unchanged.", disk.Name)
-		return
+		return disk.Definition != nil
 	}
 
 	log.Infof("Backup definitions in '%s' changed, parsing new definitions.", disk.Name)
-	disk.Definition, err = backup.ParseDefinition(&buf)
+	definition, err := backup.ParseDefinition(&buf)
 	if err != nil {
 		log.Errorf("Failed to parse backup definitions in '%s': %s", disk.Name, err)
+		// keep the hash so that an unchanged, broken file is not parsed over and over again
+		disk.Definition = nil
+		disk.groups = nil
 		disk.metrics.DefinitionsMissing()
-		return
+		return false
 	}
+
+	disk.Definition = definition
 
 	if len(disk.Definition.Directories) == 0 {
 		log.Warnf("Backup definitions in '%s' has no directories.", disk.Name)
@@ -180,6 +187,17 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 	disk.metrics.DefinitionsUpdated()
 	disk.metrics.UpdateDiskQuota(disk.Definition.Quota)
 	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition.Directories))
+
+	return true
+}
+
+// definitionsMissing drops the current definitions. The hash is reset so that the definitions are parsed again
+// as soon as the file is available again, even if its content has not changed in the meantime.
+func (disk *DiskData) definitionsMissing() {
+	disk.Definition = nil
+	disk.groups = nil
+	disk.definitionsHash = [sha1.Size]byte{}
+	disk.metrics.DefinitionsMissing()
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -294,12 +312,17 @@ func UpdateDiskInfo() {
 		for diskName, disk := range cd.Disks {
 			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
 
+			hasErrors := false
+
 			buf, _, _, err := cd.Client.Download(diskName, cd.Definition)
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, cd.DefinitionFilename, err)
-				disk.metrics.DefinitionsMissing()
+				disk.definitionsMissing()
+				hasErrors = true
 			} else {
-				disk.updateDefinitions(buf)
+				if !disk.updateDefinitions(buf) {
+					hasErrors = true
+				}
 				_ = buf.Close()
 			}
 
@@ -308,9 +331,11 @@ func UpdateDiskInfo() {
 				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
 				// don't just return, we still need to update the metrics!
 				files = &fs.DirectoryInfo{Name: diskName}
+				hasErrors = true
 			}
 
 			updateMetrics(cd.Client, disk, files)
+			disk.metrics.UpdateStatus(hasErrors)
 		}
 	}
 
@@ -610,6 +635,9 @@ func collectMatchingFiles(
 }
 
 func GetDisks() []*DiskData {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	total := 0
 
 	for _, client := range clients {
@@ -632,6 +660,9 @@ func GetFilenames(
 	directoryName string,
 	fileName string,
 ) []string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	groups, file := findGroups(diskName, directoryName, fileName)
 	if groups == nil {
 		return nil
@@ -654,25 +685,44 @@ func Download(
 	fileName string,
 	groupName string,
 ) (bytes io.ReadCloser, length int64, contentType string, err error) {
+	client, fileInfo := findDownload(diskName, directoryName, fileName, groupName)
+
+	if fileInfo == nil {
+		return nil, -1, "", errors.New("the requested file does not exist")
+	}
+
+	// the lock is not held while streaming, so that long-running downloads don't block disk updates
+	return client.Download(diskName, fileInfo)
+}
+
+func findDownload(
+	diskName string,
+	directoryName string,
+	fileName string,
+	groupName string,
+) (Client, *fs.FileInfo) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	groups, file := findGroups(diskName, directoryName, fileName)
 
 	if groups == nil {
-		return nil, -1, "", errors.New("the requested file does not exist")
+		return nil, nil
 	}
 
-	var client *clientData
+	files, exists := groups[groupName]
 
-	for _, client = range clients {
+	if !exists || file >= len(files) || files[file] == nil {
+		return nil, nil
+	}
+
+	for _, client := range clients {
 		if _, found := client.Disks[diskName]; found {
-			break
+			return client.Client, files[file]
 		}
 	}
 
-	if client == nil {
-		return nil, -1, "", errors.New("the requested file does not exist")
-	}
-
-	return client.Client.Download(diskName, groups[groupName][file])
+	return nil, nil
 }
 
 func findGroups(
@@ -680,9 +730,9 @@ func findGroups(
 	directoryName string,
 	fileName string,
 ) (map[string][]*fs.FileInfo, int) {
-	disk := FindDisk(diskName)
+	disk := findDisk(diskName)
 
-	if disk == nil {
+	if disk == nil || disk.Definition == nil || disk.groups == nil {
 		return nil, 0
 	}
 
@@ -710,7 +760,23 @@ func findGroups(
 	return nil, 0
 }
 
-func FindDisk(diskName string) *DiskData {
+// GetDefinition returns the parsed backup definitions of a disk
+// @return found is false if the disk does not exist; definition is nil if the disk has no valid definitions
+func GetDefinition(diskName string) (definition *backup.Definition, found bool) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	disk := findDisk(diskName)
+
+	if disk == nil {
+		return nil, false
+	}
+
+	// a Definition is never modified after parsing, only replaced, so it can be used without holding the lock
+	return disk.Definition, true
+}
+
+func findDisk(diskName string) *DiskData {
 	for _, client := range clients {
 		if disk, found := client.Disks[diskName]; found {
 			return disk

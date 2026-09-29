@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -39,9 +40,15 @@ type S3Client struct {
 	s3Client          *s3.Client
 	AutoDiscoverDisks bool
 	Disks             *cfg.DisksConfiguration
+
+	// guards the lazy initialization of s3Client, as downloads run concurrently to disk updates
+	s3ClientMutex sync.Mutex
 }
 
 func getClient(c *S3Client) (*s3.Client, error) {
+	c.s3ClientMutex.Lock()
+	defer c.s3ClientMutex.Unlock()
+
 	if c.s3Client != nil {
 		return c.s3Client, nil
 	}
@@ -174,7 +181,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 
 		c.appendFilesTo(&diskName, bucketRoot, result.Contents, &dotStatFiles)
 
-		if !*result.IsTruncated {
+		if !aws.ToBool(result.IsTruncated) {
 			break
 		}
 
@@ -225,28 +232,18 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 
 		// if object is a .stat file, it is downloaded for later introspection
 		if dotstat.IsStatFile(fileName) {
-			s3PathToStatFile := parentPath + "/" + fileName
-			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(s3PathToStatFile)
+			// the key must match `Parent + "/" + Name` of the regular file, see dotstat.ApplyDotStatValues
+			s3PathToNonStatFile := dotstat.RemoveDotStatSuffix(parentPath + "/" + fileName)
 
-			tempFile, err := os.CreateTemp(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+			localAbsolutePath, err := c.downloadToTempFile(diskName, obj.Key, parentPath)
 
 			if err != nil {
-				log.Errorf("Unable to create temporary file for .stat: %s", err)
+				log.Errorf("Unable to download .stat file %s: %s", *obj.Key, err)
 				continue
 			}
 
-			localAbsolutePath := tempFile.Name()
-
 			// .stat files are registered for later examination
-			log.Debugf("Found .stat file %s for %s; downloading .stat file and writing content to local path %s", s3PathToStatFile, s3PathToNonStatFile, localAbsolutePath)
-			s3OutObject, _ := c.get(diskName, &s3PathToStatFile)
-			byteStreamContent, _ := io.ReadAll(s3OutObject.Body)
-
-			_, err = tempFile.Write(byteStreamContent)
-			if err != nil {
-				log.Errorf("failed to write to file: %s", err)
-				return
-			}
+			log.Debugf("Downloaded .stat file %s for %s to local path %s", *obj.Key, s3PathToNonStatFile, localAbsolutePath)
 			(*dotStatFiles)[s3PathToNonStatFile] = localAbsolutePath
 
 			continue
@@ -263,6 +260,48 @@ func (c *S3Client) appendFilesTo(diskName *string, root *fs.DirectoryInfo, objec
 
 		currentDir.Files = append(currentDir.Files, file)
 	}
+}
+
+// downloadToTempFile downloads the given object into a temporary file and returns the file's path
+func (c *S3Client) downloadToTempFile(diskName *string, key *string, parentPath string) (string, error) {
+	out, err := c.get(diskName, key)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		_ = out.Body.Close()
+	}()
+
+	tempFile, err := os.CreateTemp(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
+
+	if err != nil {
+		return "", fmt.Errorf("unable to create temporary file: %s", err)
+	}
+
+	_, err = io.Copy(tempFile, out.Body)
+	closeErr := tempFile.Close()
+
+	if err == nil {
+		err = closeErr
+	}
+
+	if err != nil {
+		_ = os.Remove(tempFile.Name())
+		return "", fmt.Errorf("unable to write temporary file: %s", err)
+	}
+
+	return tempFile.Name(), nil
+}
+
+// objectKey returns the S3 key of a file; files in the bucket root have an empty parent
+func objectKey(file *fs.FileInfo) string {
+	if file.Parent == "" {
+		return file.Name
+	}
+
+	return strings.TrimSuffix(file.Parent, "/") + "/" + file.Name
 }
 
 func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOutput, err error) {
@@ -352,13 +391,7 @@ func (c *S3Client) hasAccessToBucket(client *s3.Client, bucketName *string) bool
 }
 
 func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, length int64, contentType string, err error) {
-	var fullName string
-
-	if file.Parent == "" {
-		fullName = file.Name
-	} else {
-		fullName = strings.TrimSuffix(file.Parent, "/") + "/" + file.Name
-	}
+	fullName := objectKey(file)
 
 	out, err := c.get(&disk, &fullName)
 
@@ -379,7 +412,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	if err != nil {
 		return fmt.Errorf("could not acquire S3 client instance: %s", err)
 	}
-	fullName := file.Parent + "/" + file.Name
+	fullName := objectKey(file)
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
 	out, err := client.DeleteObject(context.Background(), &delObjectInput)
 	_ = fmt.Sprint(out)

@@ -5,7 +5,44 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	fs "github.com/dreitier/backmon/storage/fs"
 )
+
+func TestLocalClient_GetFileNamesRejectsUnknownDisk(t *testing.T) {
+	c := LocalClient{EnvName: "test", Directory: "/mnt/backup"}
+
+	if _, err := c.GetFileNames("/some/other/disk", 1); err == nil {
+		t.Error("expected error for a disk that does not match the configured directory")
+	}
+}
+
+func TestLocalClient_DownloadRejectsUnknownDisk(t *testing.T) {
+	c := LocalClient{EnvName: "test", Directory: "/mnt/backup"}
+
+	_, _, _, err := c.Download("/wrong", &fs.FileInfo{Name: "x", Parent: ""})
+	if err == nil {
+		t.Error("expected error when downloading from an unknown disk")
+	}
+}
+
+func TestLocalClient_DownloadReturnsErrorForMissingFile(t *testing.T) {
+	root := t.TempDir()
+	c := LocalClient{EnvName: "test", Directory: root}
+
+	_, _, _, err := c.Download(root, &fs.FileInfo{Name: "does-not-exist", Parent: ""})
+	if err == nil {
+		t.Error("expected error when downloading a file that does not exist")
+	}
+}
+
+func TestLocalClient_DeleteRejectsUnknownDisk(t *testing.T) {
+	c := LocalClient{EnvName: "test", Directory: "/mnt/backup"}
+
+	if err := c.Delete("/wrong", &fs.FileInfo{Name: "x", Parent: ""}); err == nil {
+		t.Error("expected error when deleting from an unknown disk")
+	}
+}
 
 func TestLocalClient_GetDiskNames(t *testing.T) {
 	envName := "test"

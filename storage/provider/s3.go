@@ -42,13 +42,13 @@ type S3Client struct {
 	AutoDiscoverDisks bool
 	Disks             *cfg.DisksConfiguration
 
-	// guards the lazy creation of s3Client: disk updates and API requests (e.g. downloads) run concurrently
-	clientMu sync.Mutex
+	// guards the lazy initialization of s3Client, as downloads run concurrently to disk updates
+	s3ClientMutex sync.Mutex
 }
 
 func getClient(c *S3Client) (*s3.Client, error) {
-	c.clientMu.Lock()
-	defer c.clientMu.Unlock()
+	c.s3ClientMutex.Lock()
+	defer c.s3ClientMutex.Unlock()
 
 	if c.s3Client != nil {
 		return c.s3Client, nil

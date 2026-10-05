@@ -20,9 +20,10 @@ import (
 	fs "github.com/dreitier/backmon/storage/fs"
 )
 
+// mutex guards clients and all disk data; the update loop writes, the web API reads
 var (
 	clients    = make(map[string]*clientData)
-	mutex      = &sync.Mutex{}
+	mutex      = &sync.RWMutex{}
 	ignoreFile = &fs.FileInfo{Name: ".backmonignore"}
 )
 
@@ -606,6 +607,9 @@ func collectMatchingFiles(
 }
 
 func GetDisks() []*DiskData {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	total := 0
 
 	for _, client := range clients {
@@ -628,6 +632,9 @@ func GetFilenames(
 	directoryName string,
 	fileName string,
 ) []string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	groups, file := findGroups(diskName, directoryName, fileName)
 	if groups == nil {
 		return nil
@@ -656,6 +663,7 @@ func Download(
 		return nil, -1, "", errors.New("the requested file does not exist")
 	}
 
+	// the lock is not held while streaming, so that long-running downloads don't block disk updates
 	return client.Download(diskName, fileInfo)
 }
 
@@ -665,6 +673,9 @@ func findDownload(
 	fileName string,
 	groupName string,
 ) (Client, *fs.FileInfo) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	groups, file := findGroups(diskName, directoryName, fileName)
 
 	if groups == nil {
@@ -724,12 +735,16 @@ func findGroups(
 // GetDefinition returns the parsed backup definitions of a disk
 // @return found is false if the disk does not exist; definition is nil if the disk has no valid definitions
 func GetDefinition(diskName string) (definition *backup.Definition, found bool) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	disk := findDisk(diskName)
 
 	if disk == nil {
 		return nil, false
 	}
 
+	// a Definition is never modified after parsing, only replaced, so it can be used without holding the lock
 	return disk.Definition, true
 }
 

@@ -57,7 +57,8 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 			}
 		} else if dotstat.IsStatFile(dirEntry.Name()) {
 			pathToStatFile := absoluteSubdirectoryPath + "/" + dirEntry.Name()
-			pathToNonStatFile := dotstat.RemoveDotStatSuffix(pathToStatFile)
+			// the key must match `Parent + "/" + Name` of the regular file, see dotstat.ApplyDotStatValues
+			pathToNonStatFile := currentSubdirectoryPath + "/" + dotstat.RemoveDotStatSuffix(dirEntry.Name())
 			// .stat files are registered for later examination
 			dotStatFiles[pathToNonStatFile] = pathToStatFile
 			log.Debugf("Adding .stat file %s for %s", pathToStatFile, pathToNonStatFile)
@@ -69,9 +70,10 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 				continue
 			}
 
+			// Parent is relative to the disk root; Download and Delete prepend the disk path
 			file := &fs.FileInfo{
 				Name:       dirEntry.Name(),
-				Parent:     absoluteSubdirectoryPath,
+				Parent:     currentSubdirectoryPath,
 				BornAt:     fileInfo.ModTime(),
 				ModifiedAt: fileInfo.ModTime(),
 				ArchivedAt: fileInfo.ModTime(),

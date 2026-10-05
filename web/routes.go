@@ -120,6 +120,13 @@ func diskNotFound(w http.ResponseWriter, disk string) {
 	_, _ = w.Write([]byte(`' does not exist.`))
 }
 
+func definitionsNotFound(w http.ResponseWriter, disk string) {
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`Disk '`))
+	_, _ = w.Write([]byte(disk))
+	_, _ = w.Write([]byte(`' has no valid backup definitions.`))
+}
+
 func directoryNotFound(w http.ResponseWriter, directory string) {
 	w.WriteHeader(http.StatusNotFound)
 	_, _ = w.Write([]byte(`Directory '`))

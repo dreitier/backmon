@@ -2,11 +2,13 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dreitier/backmon/backup"
 	"github.com/dreitier/backmon/storage"
 	"io"
-	"fmt"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func GetDisks(w http.ResponseWriter) {
@@ -19,12 +21,12 @@ func GetDirectories(
 	w http.ResponseWriter,
 	diskName string,
 ) {
-	disk := findDisk(w, diskName)
-	if disk == nil {
+	definition := findDefinition(w, diskName)
+	if definition == nil {
 		return
 	}
 
-	writeData(w, disk.Definition)
+	writeData(w, definition)
 }
 
 func GetFiles(
@@ -64,10 +66,14 @@ func Download(
 ) {
 	data, length, contentType, err := storage.Download(diskName, directoryName, fileName, variation)
 	if err != nil {
+		log.Debugf("Download of %s/%s/%s/%s failed: %s", diskName, directoryName, fileName, variation, err)
 		groupNotFound(w, variation)
-		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	defer func() {
+		_ = data.Close()
+	}()
 
 	if contentType == "" {
 		contentType = "application/octet-stream"
@@ -77,13 +83,10 @@ func Download(
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", length))
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 
-	_, err = io.Copy(w, data)
-
-	if err != nil && err != io.EOF {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	// headers have already been sent at this point, so an error can only be logged
+	if _, err = io.Copy(w, data); err != nil {
+		log.Errorf("Failed to stream %s/%s/%s/%s to client: %s", diskName, directoryName, fileName, variation, err)
 	}
-	_ = data.Close()
 }
 
 func writeData(w http.ResponseWriter, data interface{}) {
@@ -102,15 +105,20 @@ func writeData(w http.ResponseWriter, data interface{}) {
 	}
 }
 
-func findDisk(
+// findDefinition returns the backup definitions of a disk or writes a 404 response
+func findDefinition(
 	w http.ResponseWriter,
 	diskName string,
-) *storage.DiskData {
-	disk := storage.FindDisk(diskName)
-	if disk == nil {
+) *backup.Definition {
+	definition, found := storage.GetDefinition(diskName)
+	if !found {
 		diskNotFound(w, diskName)
+		return nil
 	}
-	return disk
+	if definition == nil {
+		definitionsNotFound(w, diskName)
+	}
+	return definition
 }
 
 func findDirectory(
@@ -118,11 +126,11 @@ func findDirectory(
 	diskName string,
 	directoryName string,
 ) *backup.Directory {
-	disk := findDisk(w, diskName)
-	if disk == nil {
+	definition := findDefinition(w, diskName)
+	if definition == nil {
 		return nil
 	}
-	for _, dir := range disk.Definition.Directories {
+	for _, dir := range definition.Directories {
 		if dir.Alias == directoryName {
 			return dir
 		}

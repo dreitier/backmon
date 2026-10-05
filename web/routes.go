@@ -120,6 +120,13 @@ func diskNotFound(w http.ResponseWriter, disk string) {
 	http.Error(w, fmt.Sprintf("Disk '%s' does not exist.", disk), http.StatusNotFound)
 }
 
+func definitionsNotFound(w http.ResponseWriter, disk string) {
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`Disk '`))
+	_, _ = w.Write([]byte(disk))
+	_, _ = w.Write([]byte(`' has no valid backup definitions.`))
+}
+
 func directoryNotFound(w http.ResponseWriter, directory string) {
 	http.Error(w, fmt.Sprintf("Directory '%s' does not exist.", directory), http.StatusNotFound)
 }

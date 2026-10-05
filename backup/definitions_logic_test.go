@@ -62,7 +62,7 @@ func Test_parseTimestampExtraction(t *testing.T) {
 	cases := []struct {
 		op    string
 		input string
-		apply func(*Timestamp) bool
+		check func(*Timestamp) bool
 	}{
 		{"year", "2023", func(ts *Timestamp) bool { return ts.year == 2023 && ts.flags&yearFlag != 0 }},
 		{"month", "07", func(ts *Timestamp) bool { return ts.month == 7 && ts.flags&monthFlag != 0 }},
@@ -77,7 +77,7 @@ func Test_parseTimestampExtraction(t *testing.T) {
 		assertion.NotNil(parser, "parser for %q should not be nil", c.op)
 		ts := &Timestamp{}
 		parser(c.input, ts)
-		assertion.True(c.apply(ts), "parser for %q did not set the expected field", c.op)
+		assertion.True(c.check(ts), "parser for %q did not set the expected field", c.op)
 	}
 
 	assertion.Nil(parseTimestampExtraction("unknown"))

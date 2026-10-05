@@ -650,25 +650,40 @@ func Download(
 	fileName string,
 	groupName string,
 ) (bytes io.ReadCloser, length int64, contentType string, err error) {
+	client, fileInfo, err := findDownload(diskName, directoryName, fileName, groupName)
+
+	if err != nil {
+		return nil, -1, "", err
+	}
+
+	return client.Download(diskName, fileInfo)
+}
+
+func findDownload(
+	diskName string,
+	directoryName string,
+	fileName string,
+	groupName string,
+) (Client, *fs.FileInfo, error) {
 	groups, file := findGroups(diskName, directoryName, fileName)
 
 	if groups == nil {
-		return nil, -1, "", errors.New("the requested file does not exist")
+		return nil, nil, fmt.Errorf("file %#q in directory %#q of disk %#q does not exist", fileName, directoryName, diskName)
 	}
 
-	var client *clientData
+	files, exists := groups[groupName]
 
-	for _, client = range clients {
+	if !exists || file >= len(files) || files[file] == nil {
+		return nil, nil, fmt.Errorf("group %#q of file %#q does not exist", groupName, fileName)
+	}
+
+	for _, client := range clients {
 		if _, found := client.Disks[diskName]; found {
-			break
+			return client.Client, files[file], nil
 		}
 	}
 
-	if client == nil {
-		return nil, -1, "", errors.New("the requested file does not exist")
-	}
-
-	return client.Client.Download(diskName, groups[groupName][file])
+	return nil, nil, fmt.Errorf("no client found for disk %#q", diskName)
 }
 
 func findGroups(
@@ -676,9 +691,9 @@ func findGroups(
 	directoryName string,
 	fileName string,
 ) (map[string][]*fs.FileInfo, int) {
-	disk := FindDisk(diskName)
+	disk := findDisk(diskName)
 
-	if disk == nil {
+	if disk == nil || disk.Definition == nil || disk.groups == nil {
 		return nil, 0
 	}
 
@@ -706,7 +721,19 @@ func findGroups(
 	return nil, 0
 }
 
-func FindDisk(diskName string) *DiskData {
+// GetDefinition returns the parsed backup definitions of a disk
+// @return found is false if the disk does not exist; definition is nil if the disk has no valid definitions
+func GetDefinition(diskName string) (definition *backup.Definition, found bool) {
+	disk := findDisk(diskName)
+
+	if disk == nil {
+		return nil, false
+	}
+
+	return disk.Definition, true
+}
+
+func findDisk(diskName string) *DiskData {
 	for _, client := range clients {
 		if disk, found := client.Disks[diskName]; found {
 			return disk

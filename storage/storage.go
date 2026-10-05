@@ -148,30 +148,36 @@ func (disk *DiskData) MarshalJSON() ([]byte, error) {
 	return json.Marshal(disk.Name)
 }
 
-func (disk *DiskData) updateDefinitions(data io.Reader) {
+// updateDefinitions parses the definitions file if it has changed
+// @return true if the disk has valid definitions afterwards
+func (disk *DiskData) updateDefinitions(data io.Reader) bool {
 	var buf bytes.Buffer
 
 	duplicate := io.TeeReader(data, &buf)
 	changed, err := disk.hashChanged(duplicate)
 	if err != nil {
 		log.Errorf("Failed to update backup definitions in '%s': %s", disk.Name, err)
-		disk.Definition = nil
-		disk.metrics.DefinitionsMissing()
-		return
+		disk.definitionsMissing()
+		return false
 	}
 
 	if !changed {
 		log.Debugf("Backup definitions in '%s' are unchanged.", disk.Name)
-		return
+		return disk.Definition != nil
 	}
 
 	log.Infof("Backup definitions in '%s' changed, parsing new definitions.", disk.Name)
-	disk.Definition, err = backup.ParseDefinition(&buf)
+	definition, err := backup.ParseDefinition(&buf)
 	if err != nil {
 		log.Errorf("Failed to parse backup definitions in '%s': %s", disk.Name, err)
+		// keep the hash so that an unchanged, broken file is not parsed over and over again
+		disk.Definition = nil
+		disk.groups = nil
 		disk.metrics.DefinitionsMissing()
-		return
+		return false
 	}
+
+	disk.Definition = definition
 
 	if len(disk.Definition.Directories) == 0 {
 		log.Warnf("Backup definitions in '%s' has no directories.", disk.Name)
@@ -180,6 +186,17 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 	disk.metrics.DefinitionsUpdated()
 	disk.metrics.UpdateDiskQuota(disk.Definition.Quota)
 	disk.groups = make([]map[string][]*fs.FileInfo, len(disk.Definition.Directories))
+
+	return true
+}
+
+// definitionsMissing drops the current definitions. The hash is reset so that the definitions are parsed again
+// as soon as the file is available again, even if its content has not changed in the meantime.
+func (disk *DiskData) definitionsMissing() {
+	disk.Definition = nil
+	disk.groups = nil
+	disk.definitionsHash = [sha1.Size]byte{}
+	disk.metrics.DefinitionsMissing()
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
@@ -294,12 +311,17 @@ func UpdateDiskInfo() {
 		for diskName, disk := range cd.Disks {
 			log.Debugf("[env:%s][disk:%s] Downloading backup definitions file", environmentName, diskName)
 
+			hasErrors := false
+
 			buf, _, _, err := cd.Client.Download(diskName, cd.Definition)
 			if err != nil {
 				log.Errorf("[env:%s][disk:%s] Backup definitions file '%s' could not be opened: %v", environmentName, diskName, cd.DefinitionFilename, err)
-				disk.metrics.DefinitionsMissing()
+				disk.definitionsMissing()
+				hasErrors = true
 			} else {
-				disk.updateDefinitions(buf)
+				if !disk.updateDefinitions(buf) {
+					hasErrors = true
+				}
 				_ = buf.Close()
 			}
 
@@ -308,9 +330,11 @@ func UpdateDiskInfo() {
 				log.Errorf("[env:%s][disk:%s] Failed to retrieve files from disk: %v", environmentName, diskName, err)
 				// don't just return, we still need to update the metrics!
 				files = &fs.DirectoryInfo{Name: diskName}
+				hasErrors = true
 			}
 
 			updateMetrics(cd.Client, disk, files)
+			disk.metrics.UpdateStatus(hasErrors)
 		}
 	}
 

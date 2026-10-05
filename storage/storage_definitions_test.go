@@ -61,11 +61,12 @@ func TestUpdateDefinitions_unchangedContentDoesNotReparse(t *testing.T) {
 	assertion.Same(first, disk.Definition)
 }
 
-func TestUpdateDefinitions_invalidYamlClearsDefinition(t *testing.T) {
+func TestUpdateDefinitions_invalidYamlLeavesDefinitionUnset(t *testing.T) {
 	assertion := assert.New(t)
 	disk := &DiskData{Name: "d", metrics: metrics.NewDisk("d")}
 	defer disk.metrics.Drop()
 
+	// unparseable content fails parsing, so no definition is ever assigned
 	disk.updateDefinitions(strings.NewReader(": not: valid: yaml\n  - broken"))
 
 	assertion.Nil(disk.Definition)

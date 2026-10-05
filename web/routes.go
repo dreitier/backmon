@@ -113,36 +113,43 @@ func FileInfoHandler(w http.ResponseWriter, r *http.Request) {
 	GetVariations(w, diskName, dirName, fileName)
 }
 
-func diskNotFound(w http.ResponseWriter, disk string) {
+// notFound writes a 404 header; the body echoes user input, so it must never be interpreted as HTML
+func notFound(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusNotFound)
+}
+
+func diskNotFound(w http.ResponseWriter, disk string) {
+	notFound(w)
 	_, _ = w.Write([]byte(`Disk '`))
 	_, _ = w.Write([]byte(disk))
 	_, _ = w.Write([]byte(`' does not exist.`))
 }
 
 func definitionsNotFound(w http.ResponseWriter, disk string) {
-	w.WriteHeader(http.StatusNotFound)
+	notFound(w)
 	_, _ = w.Write([]byte(`Disk '`))
 	_, _ = w.Write([]byte(disk))
 	_, _ = w.Write([]byte(`' has no valid backup definitions.`))
 }
 
 func directoryNotFound(w http.ResponseWriter, directory string) {
-	w.WriteHeader(http.StatusNotFound)
+	notFound(w)
 	_, _ = w.Write([]byte(`Directory '`))
 	_, _ = w.Write([]byte(directory))
 	_, _ = w.Write([]byte(`' does not exist.`))
 }
 
 func fileNotFound(w http.ResponseWriter, file string) {
-	w.WriteHeader(http.StatusNotFound)
+	notFound(w)
 	_, _ = w.Write([]byte(`File '`))
 	_, _ = w.Write([]byte(file))
 	_, _ = w.Write([]byte(`' does not exist.`))
 }
 
 func groupNotFound(w http.ResponseWriter, group string) {
-	w.WriteHeader(http.StatusNotFound)
+	notFound(w)
 	_, _ = w.Write([]byte(`Group '`))
 	_, _ = w.Write([]byte(group))
 	_, _ = w.Write([]byte(`' does not exist.`))

@@ -92,7 +92,7 @@ func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {
 			file, err := parseFileSection(fileConfig, defaults)
 
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("file %s in directory %s: %s", fileName, name, err)
 			}
 
 			files[fileName] = file
@@ -127,10 +127,11 @@ func parseFileSection(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
 	}
 
 	if cfg.Has("schedule") {
-		schedule, err := cronexpr.Parse(cfg.String("schedule"))
+		cronExprString := cfg.String("schedule")
+		schedule, err := cronexpr.Parse(cronExprString)
 
 		if err != nil {
-			return nil, nil
+			return nil, fmt.Errorf("failed to parse cron expression [%s]: %s", cronExprString, err)
 		}
 
 		file.Schedule = schedule

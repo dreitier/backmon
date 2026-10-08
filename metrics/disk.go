@@ -81,7 +81,7 @@ func NewDisk(diskName string) *DiskMetric {
 		diskQuota: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Name:        "disk_quota_bytes",
-			Help:        "The amount of bytes used on a disk.",
+			Help:        "The quota (in bytes) configured for a disk.",
 			ConstLabels: presetLabels,
 		}),
 		fileAgeThreshold: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -234,14 +234,21 @@ func (b *DiskMetric) resetMetrics() {
 }
 
 func (b *DiskMetric) DefinitionsMissing() {
-	b.status.Set(0)
 	registry.Unregister(b.diskQuota)
 	b.resetMetrics()
 }
 
 func (b *DiskMetric) DefinitionsUpdated() {
-	b.status.Set(1)
 	b.resetMetrics()
+}
+
+// UpdateStatus reports 0 if the disk has been checked successfully and 1 if any error occurred
+func (b *DiskMetric) UpdateStatus(hasErrors bool) {
+	if hasErrors {
+		b.status.Set(1)
+	} else {
+		b.status.Set(0)
+	}
 }
 
 func (b *DiskMetric) UpdateFileLimits(dir string, file string, count uint64, age time.Duration, ctime time.Time) {
@@ -273,8 +280,9 @@ func (b *DiskMetric) UpdateDiskQuota(quota uint64) {
 	if quota > 0 {
 		err := registry.Register(b.diskQuota)
 		if err != nil {
-			if errors.Is(err, err.(prometheus.AlreadyRegisteredError)) {
-				log.Debugf("Disk quote metric is already registered")
+			var alreadyRegistered prometheus.AlreadyRegisteredError
+			if errors.As(err, &alreadyRegistered) {
+				log.Debugf("Disk quota metric is already registered")
 			} else {
 				log.Errorf("Failed to register disk quota metric, %v", err)
 			}

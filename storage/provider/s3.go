@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -39,9 +40,15 @@ type S3Client struct {
 	s3Client          *s3.Client
 	AutoDiscoverDisks bool
 	Disks             *cfg.DisksConfiguration
+
+	// guards the lazy initialization of s3Client, as downloads run concurrently to disk updates
+	s3ClientMutex sync.Mutex
 }
 
 func getClient(c *S3Client) (*s3.Client, error) {
+	c.s3ClientMutex.Lock()
+	defer c.s3ClientMutex.Unlock()
+
 	if c.s3Client != nil {
 		return c.s3Client, nil
 	}

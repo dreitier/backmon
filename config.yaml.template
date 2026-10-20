@@ -11,7 +11,7 @@ http:
     key: server.rsa.key
     strict: true
 
-downloads: 
+downloads:
   enabled: false
 
 environments:

@@ -1,14 +1,17 @@
 package web
 
 import (
-	"github.com/dreitier/backmon/config"
-	"github.com/dreitier/backmon/metrics"
-	"github.com/goji/httpauth"
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
+
+	"github.com/goji/httpauth"
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/dreitier/backmon/config"
+	"github.com/dreitier/backmon/metrics"
 )
 
 type RouteConfiguration struct {
@@ -114,31 +117,19 @@ func FileInfoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func diskNotFound(w http.ResponseWriter, disk string) {
-	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte(`Disk '`))
-	_, _ = w.Write([]byte(disk))
-	_, _ = w.Write([]byte(`' does not exist.`))
+	http.Error(w, fmt.Sprintf("Disk '%s' does not exist.", disk), http.StatusNotFound)
 }
 
 func directoryNotFound(w http.ResponseWriter, directory string) {
-	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte(`Directory '`))
-	_, _ = w.Write([]byte(directory))
-	_, _ = w.Write([]byte(`' does not exist.`))
+	http.Error(w, fmt.Sprintf("Directory '%s' does not exist.", directory), http.StatusNotFound)
 }
 
 func fileNotFound(w http.ResponseWriter, file string) {
-	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte(`File '`))
-	_, _ = w.Write([]byte(file))
-	_, _ = w.Write([]byte(`' does not exist.`))
+	http.Error(w, fmt.Sprintf("File '%s' does not exist.", file), http.StatusNotFound)
 }
 
 func groupNotFound(w http.ResponseWriter, group string) {
-	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte(`Group '`))
-	_, _ = w.Write([]byte(group))
-	_, _ = w.Write([]byte(`' does not exist.`))
+	http.Error(w, fmt.Sprintf("Group '%s' does not exist.", group), http.StatusNotFound)
 }
 
 func LatestFileHandler(w http.ResponseWriter, r *http.Request) {

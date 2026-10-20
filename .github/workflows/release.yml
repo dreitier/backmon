@@ -4,23 +4,30 @@ on:
     tags:
      - '*'
 
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Release new version
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
-    - name: Get Git informatioon
+    - name: Get Git information
       id: git_info
       shell: bash
       run: |
-        echo ::set-output name=GIT_TAG::${GITHUB_REF#refs/*/}
-        echo ::set-output name=GIT_COMMIT::$(git rev-parse --short HEAD)
+        {
+          echo "GIT_TAG=${GITHUB_REF#refs/*/}"
+          echo "GIT_COMMIT=$(git rev-parse --short HEAD)"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Publish to Registry
       id: publish_to_registry
-      uses: elgohr/Publish-Docker-Github-Action@v5
+      uses: elgohr/Publish-Docker-Github-Action@1c2f28ccd9476e8a936ac9a1f287405504c93304 # v5
       env:
         GIT_COMMIT: ${{ steps.git_info.outputs.GIT_COMMIT }}
         GIT_TAG: ${{ steps.git_info.outputs.GIT_TAG }}
@@ -33,14 +40,14 @@ jobs:
 
     - name: Extract binary image from previously build docker image
       id: extract
-      uses: shrink/actions-docker-extract@v3
+      uses: shrink/actions-docker-extract@04c17c51a5b9fd93b7aed2e05e86c8fe2d90ee52 # v3
       with:
         image: 'dreitier/backmon:${{ steps.publish_to_registry.outputs.tag }}'
         path: '/app/backmon'
         destination: backmon
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: backmon
         path: ${{ steps.extract.outputs.destination }}

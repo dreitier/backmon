@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- bumped Go to 1.26 (toolchain 1.26.10); Go 1.24 is no longer supported upstream
+- replaced the build workflow with a CI pipeline (lint, tests, smoke test, govulncheck, CodeQL, image scan)
+- `http.tls.strict: true` only allows AEAD cipher suites with forward secrecy for TLS 1.2 (removed CBC and plain RSA key exchange); very old clients may no longer connect
+- the HTTP server now uses a 10s `ReadHeaderTimeout` to protect against slowloris attacks
+- 404 responses of the API are sent as `text/plain` with `X-Content-Type-Options: nosniff`
+- backup definition files are hashed with SHA-256 instead of SHA-1 for change detection
+
+### Fixed
+- possible panic when registering the disk quota metric fails with an unexpected error
+- wrap underlying errors (`%w`) so callers can inspect them
+- negative numbers in configuration values (e.g. `retention-count: -1`) are treated as 0 instead of wrapping around to a huge number
+- streaming a download no longer leaks the file handle if the transfer fails
+
 ## [3.2.2] - 2025-12-10
 ### Fixed
 - missing indirection in test

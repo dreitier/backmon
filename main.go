@@ -8,12 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	termbox "github.com/nsf/termbox-go"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dreitier/backmon/config"
 	"github.com/dreitier/backmon/metrics"
 	"github.com/dreitier/backmon/storage"
 	"github.com/dreitier/backmon/web"
-	termbox "github.com/nsf/termbox-go"
-	log "github.com/sirupsen/logrus"
 )
 
 const app = "backmon"
@@ -79,12 +80,13 @@ func configureTerminal() {
 				d := data[:ev.N]
 				current = fmt.Sprintf("%q", d)
 
+				switch current {
 				// handle disk refresh
-				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
+				case `"\x12"` /* Ctrl+R */, `"r"`:
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-					// handle exiting
-				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
+				// handle exiting
+				case `"\x1b"` /* ESC */, `"q"`, `"\x03"`:
 					log.Printf("Exiting...")
 					termbox.Close()
 					os.Exit(0)

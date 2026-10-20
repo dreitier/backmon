@@ -3,13 +3,15 @@ package fs
 // Common data structures for files. As S3 objects are also files, we are using our own filesystem abstraction.
 import (
 	"fmt"
-	fs "github.com/dreitier/backmon/storage/fs"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	fs "github.com/dreitier/backmon/storage/fs"
 )
 
 const DotStatFileSuffix = ".stat"
@@ -61,11 +63,7 @@ func IsStatFile(fileName string) bool {
 
 // RemoveDotStatSuffix Removes the `.stat` suffix from the provided file path if present
 func RemoveDotStatSuffix(pathToDotStatFile string) string {
-	if strings.HasSuffix(pathToDotStatFile, DotStatFileSuffix) {
-		pathToDotStatFile = pathToDotStatFile[:len(pathToDotStatFile)-len(DotStatFileSuffix)]
-	}
-
-	return pathToDotStatFile
+	return strings.TrimSuffix(pathToDotStatFile, DotStatFileSuffix)
 }
 
 // From the provided YAML file the keys are read an then accordingly applied to the file's stat attributes (BornAt, ModifiedAt, ArchivedAt)
@@ -79,7 +77,7 @@ func updateStatAttributesFromYamlValues(fileInfo *fs.FileInfo, pathToStatFile st
 	err = yaml.Unmarshal(buf, c)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal: %v", err)
+		return nil, fmt.Errorf("unable to unmarshal: %w", err)
 	}
 
 	updateTimeField(c.BornAt, &fileInfo.BornAt)

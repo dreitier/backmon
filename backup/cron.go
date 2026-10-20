@@ -1,9 +1,11 @@
 package backup
 
 import (
-	"github.com/dreitier/backmon/config"
-	"github.com/gorhill/cronexpr"
 	"time"
+
+	"github.com/gorhill/cronexpr"
+
+	"github.com/dreitier/backmon/config"
 )
 
 func FindPrevious(cron *cronexpr.Expression, moment time.Time) time.Time {

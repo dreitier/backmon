@@ -19,10 +19,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go/logging"
 
+	log "github.com/sirupsen/logrus"
+
 	cfg "github.com/dreitier/backmon/config"
 	fs "github.com/dreitier/backmon/storage/fs"
 	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
-	log "github.com/sirupsen/logrus"
 )
 
 type S3Client struct {
@@ -116,7 +117,8 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 	if c.TLSSkipVerify {
 		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			// explicit opt-in via `tls_skip_verify`, e.g. for MinIO with self-signed certificates
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // see above
 		}
 		httpClient := &http.Client{Transport: tr}
 		awscfg.HTTPClient = httpClient
@@ -150,7 +152,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 	client, err := getClient(c)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
+		return nil, fmt.Errorf("could not acquire S3 client instance: %w", err)
 	}
 
 	var continuationToken *string
@@ -167,7 +169,7 @@ func (c *S3Client) GetFileNames(diskName string, maxDepth uint64) (*fs.Directory
 		result, err := client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{Bucket: &diskName, ContinuationToken: continuationToken})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to get objects in disk %#q: %s", diskName, err)
+			return nil, fmt.Errorf("failed to get objects in disk %#q: %w", diskName, err)
 		}
 
 		log.Infof("Retrieved %d items from disk %#q", len(result.Contents), diskName)
@@ -269,7 +271,7 @@ func (c *S3Client) get(diskName *string, fileName *string) (file *s3.GetObjectOu
 	client, err := getClient(c)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
+		return nil, fmt.Errorf("could not acquire S3 client instance: %w", err)
 	}
 	getObjectInput := s3.GetObjectInput{Bucket: diskName, Key: fileName}
 	out, err := client.GetObject(context.Background(), &getObjectInput)
@@ -285,7 +287,7 @@ func (c *S3Client) GetDiskNames() ([]string, error) {
 	client, err := getClient(c)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not acquire S3 client instance: %s", err)
+		return nil, fmt.Errorf("could not acquire S3 client instance: %w", err)
 	}
 
 	if c.AutoDiscoverDisks {
@@ -304,7 +306,7 @@ func (c *S3Client) findAvailableDisksByAutoDiscovery(client *s3.Client) ([]strin
 	result, err := client.ListBuckets(context.Background(), &s3.ListBucketsInput{})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to list S3 disks by auto discovery: %s", err)
+		return nil, fmt.Errorf("failed to list S3 disks by auto discovery: %w", err)
 	}
 
 	for _, bucketAsDisk := range result.Buckets {
@@ -363,7 +365,7 @@ func (c *S3Client) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser
 	out, err := c.get(&disk, &fullName)
 
 	if err != nil {
-		return nil, -1, "", fmt.Errorf("failed to download object %s from disk %s: %s", fullName, disk, err)
+		return nil, -1, "", fmt.Errorf("failed to download object %s from disk %s: %w", fullName, disk, err)
 	}
 
 	length = *out.ContentLength
@@ -377,7 +379,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	client, err := getClient(c)
 
 	if err != nil {
-		return fmt.Errorf("could not acquire S3 client instance: %s", err)
+		return fmt.Errorf("could not acquire S3 client instance: %w", err)
 	}
 	fullName := file.Parent + "/" + file.Name
 	delObjectInput := s3.DeleteObjectInput{Bucket: &disk, Key: &fullName}
@@ -385,7 +387,7 @@ func (c *S3Client) Delete(disk string, file *fs.FileInfo) error {
 	_ = fmt.Sprint(out)
 
 	if err != nil {
-		return fmt.Errorf("failed to delete object %s from disk %s: %s", fullName, disk, err)
+		return fmt.Errorf("failed to delete object %s from disk %s: %w", fullName, disk, err)
 	}
 
 	return nil

@@ -1,0 +1,29 @@
+# Local checks before each commit, mirroring the CI lint job.
+# Setup (once per clone): `pre-commit install` (Fedora: `sudo dnf install pre-commit`)
+# Run manually on all files: `pre-commit run --all-files`
+repos:
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.14.0 # keep in sync with GOLANGCI_LINT_VERSION in .github/workflows/ci.yml
+    hooks:
+      - id: golangci-lint-config-verify
+      # formats the files (gofmt, goimports); the commit is aborted if anything changed, so review and re-add
+      - id: golangci-lint-fmt
+      # lints only changes since HEAD to keep commits fast
+      - id: golangci-lint
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.11 # keep in sync with ACTIONLINT_VERSION in .github/workflows/ci.yml
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        # _samples/ contains intentionally invalid fixtures for the tests
+        exclude: ^_samples/
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+        exclude: ^_samples/
+      - id: trailing-whitespace
+        exclude: ^_samples/

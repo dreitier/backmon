@@ -90,8 +90,8 @@ func (c *Configuration) Http() *HttpConfiguration {
 
 // CreateFromConfigurationFiles Create a new configuration from default configuration files
 func CreateFromConfigurationFiles() *Configuration {
-	var file *os.File = nil
-	var err error = nil
+	var file *os.File
+	var err error
 
 	if hasGlobalDebugEnabled {
 		log.SetLevel(log.DebugLevel)
@@ -156,7 +156,7 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 	const paramAllOthersValueInclude = paramInclude
 	const paramAllOthersValueExclude = paramExclude
 
-	// #5:UC2: include is the default behaviour
+	// #5:UC2: include is the default behavior
 	allOthers := DisksBehaviourInclude
 
 	if cfg.Has(paramAllOthers) {
@@ -165,10 +165,8 @@ func ParseDisksSection(cfg Raw) *DisksConfiguration {
 		switch rawAllOthers {
 		case paramAllOthersValueInclude:
 			allOthers = DisksBehaviourInclude
-			break
 		case paramAllOthersValueExclude:
 			allOthers = DisksBehaviourExclude
-			break
 		default:
 			log.Warnf("Unknown value for %s. Using 'include' as default value", paramAllOthers)
 		}
@@ -443,7 +441,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			Disks:             disks,
 		}
 	} else {
-		return nil, errors.New(fmt.Sprintf("no supported storage configuration found for environment %s", envName))
+		return nil, fmt.Errorf("no supported storage configuration found for environment %s", envName)
 	}
 
 	definitions := "backup_definitions.yaml"

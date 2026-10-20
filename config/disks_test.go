@@ -48,7 +48,7 @@ exclude:
 - bucket-1
 include:
 - bucket-2
-# all_others is by default set to "include" as this is default behaviour at the moment
+# all_others is by default set to "include" as this is default behavior at the moment
 all_others: include
 `)
 	cfg := ParseDisksSection(raw)
@@ -170,5 +170,5 @@ exclude:
 	status, appliedPolicy := GetDiskStatus("abcdef", cfg)
 
 	assertion.Equal(DisksPolicyConflictingByRegex, appliedPolicy)
-	assertion.Equal(DisksBehaviourInclude /* default behaviour */, status)
+	assertion.Equal(DisksBehaviourInclude /* default behavior */, status)
 }

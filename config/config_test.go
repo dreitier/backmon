@@ -2,8 +2,9 @@ package config
 
 import (
 	//	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_GH29_PR31_NewConfigurationInstance_canDetectRegionForFirstEnvironment(t *testing.T) {
@@ -64,14 +65,14 @@ environments:
       include:
         - included-1
       exclude:
-        - excluded-1  
+        - excluded-1
 `)
 	sut := NewConfigurationInstance(raw)
 
 	assertion.NotNil(sut)
 	assertion.Equal(1, len(sut.Environments()))
 
-	var diskCfg *DisksConfiguration = sut.Environments()[0].Client.Disks
+	diskCfg := sut.Environments()[0].Client.Disks
 	assertion.NotNil(diskCfg)
 
 	assertion.Equal(1, len(diskCfg.include))

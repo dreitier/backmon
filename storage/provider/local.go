@@ -1,16 +1,15 @@
 package provider
 
 import (
-	"errors"
 	"fmt"
-	fs "github.com/dreitier/backmon/storage/fs"
-	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	fs "github.com/dreitier/backmon/storage/fs"
+	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 )
 
 type LocalClient struct {
@@ -20,7 +19,7 @@ type LocalClient struct {
 
 func (c *LocalClient) GetFileNames(diskName string, maxDepth uint64) (*fs.DirectoryInfo, error) {
 	if diskName != c.Directory {
-		return nil, errors.New(fmt.Sprintf("disk %#q does not exist", diskName))
+		return nil, fmt.Errorf("disk %#q does not exist", diskName)
 	}
 
 	return scanDir(diskName, "", "", maxDepth)
@@ -89,7 +88,7 @@ func scanDir(root string, fullSubdirectoryPath string, directoryName string, max
 
 func (c *LocalClient) GetDiskNames() ([]string, error) {
 	diskName := c.Directory
-	diskNames := make([]string, 1, 1)
+	diskNames := make([]string, 1)
 	diskNames[0] = diskName
 
 	return diskNames, nil
@@ -97,7 +96,7 @@ func (c *LocalClient) GetDiskNames() ([]string, error) {
 
 func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadCloser, length int64, contentType string, err error) {
 	if disk != c.Directory {
-		return nil, -1, "", errors.New(fmt.Sprintf("disk %#q does not exist", disk))
+		return nil, -1, "", fmt.Errorf("disk %#q does not exist", disk)
 	}
 	fileName := filepath.Join(disk, file.Parent, file.Name)
 
@@ -112,7 +111,7 @@ func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadClo
 	bytes, err = os.Open(fileName)
 
 	if err != nil {
-		return nil, -1, "", fmt.Errorf("failed to open file for reading: %s", err)
+		return nil, -1, "", fmt.Errorf("failed to open file for reading: %w", err)
 	}
 
 	return bytes, length, "", nil
@@ -136,36 +135,4 @@ func (c *LocalClient) Delete(disk string, file *fs.FileInfo) error {
 	}
 
 	return err
-}
-
-func (c *LocalClient) findDisk(diskName *string) (*string, error) {
-	names, err := c.GetDiskNames()
-
-	if err != nil {
-		return nil, fmt.Errorf("could not get available diskName names: %s", err)
-	}
-
-	if runtime.GOOS != "windows" && !strings.HasPrefix(*diskName, string(os.PathSeparator)) {
-		*diskName = string(os.PathSeparator) + *diskName
-	}
-
-	diskFound := false
-
-	for _, name := range names {
-		if name == *diskName {
-			diskFound = true
-		}
-	}
-
-	if !diskFound {
-		return nil, fmt.Errorf("unknown diskName %#q", *diskName)
-	}
-
-	return diskName, nil
-}
-
-func (c *LocalClient) getDiskName() string {
-	trimmedString := strings.TrimLeft(c.Directory, "/")
-	normalizedDiskName := strings.Replace(trimmedString, "/", "_", -1)
-	return normalizedDiskName
 }

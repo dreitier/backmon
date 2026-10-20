@@ -2,7 +2,7 @@ package storage
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,11 +12,12 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dreitier/backmon/backup"
 	"github.com/dreitier/backmon/config"
 	"github.com/dreitier/backmon/metrics"
 	fs "github.com/dreitier/backmon/storage/fs"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -139,9 +140,8 @@ type DiskData struct {
 	SafeName        string
 	metrics         *metrics.DiskMetric
 	groups          []map[string][]*fs.FileInfo
-	quota           uint64
 	Definition      *backup.Definition
-	definitionsHash [sha1.Size]byte
+	definitionsHash [sha256.Size]byte
 }
 
 func (disk *DiskData) MarshalJSON() ([]byte, error) {
@@ -183,22 +183,22 @@ func (disk *DiskData) updateDefinitions(data io.Reader) {
 }
 
 func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
-	sha := sha1.New()
+	sha := sha256.New()
 	count, err := io.Copy(sha, data)
 	if err != nil {
-		return false, fmt.Errorf("failed to compute file hash: %s", err)
+		return false, fmt.Errorf("failed to compute file hash: %w", err)
 	}
 	_ = count
-	hash := make([]byte, 0, sha1.Size)
+	hash := make([]byte, 0, sha256.Size)
 	hash = sha.Sum(hash)
-	for i := 0; i < sha1.Size; i++ {
+	for i := 0; i < sha256.Size; i++ {
 		if disk.definitionsHash[i] != hash[i] {
 			changed = true
 			break
 		}
 	}
 	if changed {
-		for i := 0; i < sha1.Size; i++ {
+		for i := 0; i < sha256.Size; i++ {
 			disk.definitionsHash[i] = hash[i]
 		}
 	}
@@ -250,7 +250,8 @@ func (list FileGroup) Swap(i int, j int) {
 
 func (list FileGroup) Purge(fileDef *backup.FileDefinition, path string, disk string, client Client) (remainder FileGroup, young uint64) {
 	threshold := time.Now().UTC().Add(-fileDef.RetentionAge)
-	young = uint64(sort.Search(len(list), func(i int) bool { return list[i].Time.Before(threshold) }))
+	// sort.Search never returns a negative index
+	young = uint64(sort.Search(len(list), func(i int) bool { return list[i].Time.Before(threshold) })) //nolint:gosec // see above
 
 	keep := fileDef.RetentionCount
 	if young > keep {
@@ -563,10 +564,8 @@ func collectMatchingFiles(
 			switch fileDef.SortBy {
 			case backup.SortByBornAt:
 				useDefaultsFromTime = &file.BornAt
-				break
 			case backup.SortByArchivedAt:
 				useDefaultsFromTime = &file.ArchivedAt
-				break
 			// default includes "interpolation": we can't reference an interpolation time as default because it's not assigned yet
 			default:
 				useDefaultsFromTime = &file.ModifiedAt
@@ -581,13 +580,10 @@ func collectMatchingFiles(
 			switch fileDef.SortBy {
 			case backup.SortByBornAt:
 				sortByTime = &file.BornAt
-				break
 			case backup.SortByModifiedAt:
 				sortByTime = &file.ModifiedAt
-				break
 			case backup.SortByArchivedAt:
 				sortByTime = &file.ArchivedAt
-				break
 			// by default, we are using the interpolated timestamp
 			default:
 				sortByTime = file.InterpolatedTimestamp
@@ -724,7 +720,7 @@ func FindDisk(diskName string) *DiskData {
 func gatherDirUsageStats(dir *fs.DirectoryInfo, objectCount uint64, objectSizeSum uint64) (uint64, uint64) {
 
 	for _, file := range dir.Files {
-		objectSizeSum += uint64(file.Size)
+		objectSizeSum += uint64(file.Size) //nolint:gosec // file sizes are never negative
 		objectCount++
 	}
 

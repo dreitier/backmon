@@ -12,7 +12,17 @@ You can easily integrate *backmon* into your Prometheus- and Grafana-based infra
 You can find our official documentation at [https://dreitier.github.io/backmon-docs](https://dreitier.github.io/backmon-docs).
 
 ### Dependencies
-During build time, *backmon* requires Go 1.24 or later.
+During build time, *backmon* requires Go 1.26 or later.
+
+### Development
+CI runs [golangci-lint](https://golangci-lint.run) (including `gofmt`/`goimports`) on every pull request. To catch issues before pushing, install [pre-commit](https://pre-commit.com) and enable the hooks once per clone:
+
+```bash
+sudo dnf install pre-commit   # or: pipx install pre-commit
+make hooks                    # runs `pre-commit install`
+```
+
+`make fmt` formats the code, `make lint` runs the linters, `make test` runs the tests.
 
 ### Helm
 We provide a Helm chart for *backmon* which you can easily install:
@@ -29,7 +39,7 @@ $ helm install dreitier/backmon
 	$ echo "export GOPATH=\"\$HOME/go\"" >> ~/.bashrc
 	$ echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> ~/.bashrc
 	$ curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	
+
 	# Ubuntu: Install latest Go version
 	$ sudo add-apt-repository ppa:longsleep/golang-backports
 	$ sudo apt update

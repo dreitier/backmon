@@ -65,7 +65,7 @@ environments:
       include:
         - included-1
       exclude:
-        - excluded-1  
+        - excluded-1
 `)
 	sut := NewConfigurationInstance(raw)
 

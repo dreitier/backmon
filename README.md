@@ -39,7 +39,7 @@ $ helm install dreitier/backmon
 	$ echo "export GOPATH=\"\$HOME/go\"" >> ~/.bashrc
 	$ echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> ~/.bashrc
 	$ curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	
+
 	# Ubuntu: Install latest Go version
 	$ sudo add-apt-repository ppa:longsleep/golang-backports
 	$ sudo apt update

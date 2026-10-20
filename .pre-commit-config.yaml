@@ -20,6 +20,8 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-yaml
+        # _samples/ contains intentionally invalid fixtures for the tests
+        exclude: ^_samples/
       - id: check-merge-conflict
       - id: end-of-file-fixer
         exclude: ^_samples/

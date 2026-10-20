@@ -157,7 +157,11 @@ func (c Raw) Duration(key string) time.Duration {
 	s, ok := val.(string)
 	if !ok {
 		// plain numbers are interpreted as days; cap them to prevent an overflow of time.Duration
-		days := min(asUint64(val), uint64(math.MaxInt64/int64(Day)))
+		const maxDays uint64 = math.MaxInt64 / uint64(Day)
+		days := asUint64(val)
+		if days > maxDays {
+			return Day * time.Duration(maxDays)
+		}
 		return Day * time.Duration(days)
 	}
 
@@ -265,9 +269,15 @@ func asInt64(val interface{}) int64 {
 	case uint32:
 		return int64(v)
 	case uint64:
-		return int64(min(v, math.MaxInt64))
+		if v > math.MaxInt64 {
+			return math.MaxInt64
+		}
+		return int64(v)
 	case uint:
-		return int64(min(uint64(v), math.MaxInt64))
+		if uint64(v) > math.MaxInt64 {
+			return math.MaxInt64
+		}
+		return int64(v)
 	case string:
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {

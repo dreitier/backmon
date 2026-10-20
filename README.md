@@ -46,19 +46,42 @@ $ helm install dreitier/backmon
 	$ sudo apt install golang-go
 	$ sudo go build
 
+### Binaries
+Binaries for Linux, macOS and Windows (amd64 and arm64) are attached to each [GitHub release](https://github.com/dreitier/backmon/releases), together with `checksums.txt` and SBOMs.
+
 ### Docker container
-You can find ready-to-run Docker containers at [dreitier/backmon](https://hub.docker.com/repository/docker/dreitier/backmon).
+Multi-arch images (`linux/amd64`, `linux/arm64`) are published to [Docker Hub](https://hub.docker.com/r/dreitier/backmon) and GHCR:
+
+```bash
+docker pull dreitier/backmon:4        # or ghcr.io/dreitier/backmon:4
+```
+
+Tags: `x.y.z`, `x.y`, `x` and `latest`. Mount your configuration to `/etc/backmon/config.yaml`.
+
+The image is based on `distroless/static` and runs as the non-root user `65532`. If backmon has to read backup files that are only readable by root or a specific group, set the user or `fsGroup` accordingly (e.g. `--user` for `docker run`, `securityContext` in Kubernetes).
+
+### Verifying releases
+Binaries and images come with [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations):
+
+```bash
+gh attestation verify backmon_4.0.0_linux_amd64.tar.gz --owner dreitier
+gh attestation verify oci://ghcr.io/dreitier/backmon:4.0.0 --owner dreitier
+```
 
 ## Development
 ### Creating new releases
+Releases are fully automated with [semantic-release](https://github.com/semantic-release/semantic-release). Every push to `main` runs the [release workflow](.github/workflows/release.yml): after CI passes, the next version is derived from the [Conventional Commits](https://www.conventionalcommits.org/) since the last release, `CHANGELOG.md` is updated, and the GitHub release with binaries and the Docker images are published.
 
-1. Update the [CHANGELOG.md](changelog).
-2. Create a new release (artifact & Docker container) by pushing a new Git tag:
+| Commit / PR title                                  | Release                |
+|----------------------------------------------------|------------------------|
+| `fix: ...`, `perf: ...`, `build(deps): ...`        | patch (`4.0.0` → `4.0.1`) |
+| `feat: ...`                                        | minor (`4.0.0` → `4.1.0`) |
+| `feat!: ...` or a `BREAKING CHANGE:` footer        | major (`4.0.0` → `5.0.0`) |
+| `docs:`, `ci:`, `chore:`, `refactor:`, `test:` ... | no release             |
 
-```bash
-$ git tag x.y.z
-$ git push origin x.y.z
-```
+PRs are squash-merged, so the **PR title** becomes the commit message on `main`; a check on every PR makes sure it follows the Conventional Commits format. Don't edit `CHANGELOG.md` or create tags by hand.
+
+To try the GoReleaser build locally, run `make snapshot`.
 
 ### Running tests
 

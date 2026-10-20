@@ -1,53 +1,209 @@
-name: Release new version
+name: Release
+
+# On every push to main (i.e. every merged PR):
+# 1. run the full CI pipeline
+# 2. semantic-release derives the next version from the Conventional Commits since the last tag,
+#    updates CHANGELOG.md, pushes the release commit + tag and creates the GitHub release.
+#    Nothing happens if there are only non-releasing commits (docs, ci, chore, ...).
+# 3. GoReleaser attaches binaries for linux/darwin/windows (amd64, arm64), checksums and SBOMs
+# 4. multi-arch Docker images are pushed to Docker Hub and GHCR
+# Binaries and images get build provenance attestations (verify with `gh attestation verify`).
 on:
   push:
-    tags:
-     - '*'
+    branches:
+      - main
+  # re-run a release attempt manually, e.g. after a failed publish
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# never run two releases at the same time, and never cancel one halfway
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  GORELEASER_VERSION: v2.18.3
+
 jobs:
-  release:
-    name: Release new version
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+  semantic-release:
+    name: Version & GitHub release
+    needs: ci
     runs-on: ubuntu-latest
+    # all writes use the GitHub App token, which may bypass the branch protection of main
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        persist-credentials: false
+      - name: Create GitHub App token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-    - name: Get Git information
-      id: git_info
-      shell: bash
-      run: |
-        {
-          echo "GIT_TAG=${GITHUB_REF#refs/*/}"
-          echo "GIT_COMMIT=$(git rev-parse --short HEAD)"
-        } >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # semantic-release authenticates git pushes with GITHUB_TOKEN itself
+          persist-credentials: false
 
-    - name: Publish to Registry
-      id: publish_to_registry
-      uses: elgohr/Publish-Docker-Github-Action@1c2f28ccd9476e8a936ac9a1f287405504c93304 # v5
-      env:
-        GIT_COMMIT: ${{ steps.git_info.outputs.GIT_COMMIT }}
-        GIT_TAG: ${{ steps.git_info.outputs.GIT_TAG }}
-      with:
-        name: dreitier/backmon
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
-        tag_names: true
-        buildargs: GIT_COMMIT,GIT_TAG
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
 
-    - name: Extract binary image from previously build docker image
-      id: extract
-      uses: shrink/actions-docker-extract@04c17c51a5b9fd93b7aed2e05e86c8fe2d90ee52 # v3
-      with:
-        image: 'dreitier/backmon:${{ steps.publish_to_registry.outputs.tag }}'
-        path: '/app/backmon'
-        destination: backmon
+      - name: Install semantic-release
+        run: npm ci --ignore-scripts
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      with:
-        name: backmon
-        path: ${{ steps.extract.outputs.destination }}
+      - name: Get bot identity for the release commit
+        id: bot
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          user_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)
+          {
+            echo "name=${APP_SLUG}[bot]"
+            echo "email=${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run semantic-release
+        id: release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          GIT_AUTHOR_NAME: ${{ steps.bot.outputs.name }}
+          GIT_AUTHOR_EMAIL: ${{ steps.bot.outputs.email }}
+          GIT_COMMITTER_NAME: ${{ steps.bot.outputs.name }}
+          GIT_COMMITTER_EMAIL: ${{ steps.bot.outputs.email }}
+
+  binaries:
+    name: Binaries
+    needs: semantic-release
+    if: needs.semantic-release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.semantic-release.outputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # syft generates the SBOMs configured in .goreleaser.yaml
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: ${{ env.GORELEASER_VERSION }}
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance of the archives
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+
+  image:
+    name: Docker image
+    needs: semantic-release
+    if: needs.semantic-release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.semantic-release.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.semantic-release.outputs.version }}
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4.0.0 -> 4.0.0, 4.0, 4, latest
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: |
+            dreitier/backmon
+            ghcr.io/dreitier/backmon
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ env.VERSION }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.VERSION }}
+            type=semver,pattern={{major}},value=${{ env.VERSION }}
+            type=raw,value=latest
+
+      - name: Short commit
+        id: git
+        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          build-args: |
+            GIT_COMMIT=${{ steps.git.outputs.short_sha }}
+            GIT_TAG=${{ env.VERSION }}
+
+      - name: Attest image on Docker Hub
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: index.docker.io/dreitier/backmon
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest image on GHCR
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/dreitier/backmon
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

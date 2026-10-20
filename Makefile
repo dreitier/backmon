@@ -7,7 +7,7 @@ GIT_COMMIT ?= $(shell git rev-list -1 HEAD | cut -c1-7)
 GIT_TAG ?= $(shell git tag --points-at HEAD)
 TAG ?= latest
 
-.PHONY: all test fmt lint hooks build clean docker-build docker-push
+.PHONY: all test fmt lint hooks build snapshot clean docker-build
 
 all: build
 
@@ -23,20 +23,18 @@ lint:
 hooks:
 	pre-commit install
 
+# builds for the current OS/arch; cross-compile with e.g. `make build GOOS=linux GOARCH=arm64`
 build:
-	go mod download
-	# disable CGO to use default libc
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) -ldflags "-X main.gitCommit=$(GIT_COMMIT) -X main.gitTag=$(GIT_TAG)"
-	strip $(EXECUTABLE)
+	CGO_ENABLED=0 go build -trimpath -o $(EXECUTABLE) -ldflags "-s -w -X main.gitCommit=$(GIT_COMMIT) -X main.gitTag=$(GIT_TAG)"
+
+# builds all release binaries into dist/ without publishing anything
+snapshot:
+	goreleaser release --snapshot --clean --skip=sbom
 
 clean:
 	go clean
-	rm -rf vendor $(EXECUTABLE)
+	rm -rf vendor dist $(EXECUTABLE)
 
+# local image only; releases are published by .github/workflows/release.yml
 docker-build:
-	docker build --no-cache -t ${IMAGE}:${TAG} .
-
-docker-push: docker-build
-	docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-	docker push ${IMAGE}:${TAG}
-	docker push ${IMAGE}:latest
+	docker build --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GIT_TAG=$(GIT_TAG) -t ${IMAGE}:${TAG} .

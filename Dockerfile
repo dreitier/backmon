@@ -1,22 +1,42 @@
 # syntax=docker/dockerfile:1
 
-# builder image
-FROM golang:1.26 AS builder
+# Builder runs on the host platform and cross-compiles for the target platform,
+# so multi-arch images don't need QEMU.
+FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
 
-# if available, inject build args from GitHub Actions so that we have the current commit and tag
-ARG GIT_COMMIT
-ARG GIT_TAG
+ARG TARGETOS
+ARG TARGETARCH
+# injected by the release workflow so that `backmon` logs its version and commit
+ARG GIT_COMMIT=unknown
+ARG GIT_TAG=unknown
 
 WORKDIR /build
-COPY . ./
-RUN make
 
-# target image
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath \
+      -ldflags "-s -w -X main.gitCommit=${GIT_COMMIT} -X main.gitTag=${GIT_TAG}" \
+      -o /out/backmon .
+
+# Runtime image: static binary, CA certificates and tzdata only; no shell, runs as UID 65532
+FROM gcr.io/distroless/static-debian13:nonroot
+
+LABEL org.opencontainers.image.source="https://github.com/dreitier/backmon" \
+      org.opencontainers.image.description="Monitoring of backup files in filesystems and object storages" \
+      org.opencontainers.image.licenses="MIT"
+
+# config.yaml is looked up in the working directory, ~/.backmon and /etc/backmon (used by the Helm chart)
 WORKDIR /app
-COPY --from=builder /build/backmon .
-COPY entrypoint.sh /app
+COPY --from=builder /out/backmon /app/backmon
 
+USER 65532:65532
 EXPOSE 8000/tcp
-ENTRYPOINT ["/app/entrypoint.sh"]
+
+# containers have no interactive terminal, so skip the keyboard handling
+ENTRYPOINT ["/app/backmon", "-background"]

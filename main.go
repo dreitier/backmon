@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -68,36 +67,21 @@ func configureTerminal() {
 		return
 	}
 
-	// start goroutine to continuously poll the keyboard
-	go func() {
-		for {
-			var current string
-			var data [64]byte
+	// start goroutine to continuously poll the keyboard (platform-specific, see terminal_*.go)
+	go pollKeyboard()
+}
 
-			// we have to poll the raw events; normal events don't include escape sequences
-			switch ev := termbox.PollRawEvent(data[:]); ev.Type {
-			case termbox.EventRaw:
-				d := data[:ev.N]
-				current = fmt.Sprintf("%q", d)
+// handleReloadKey forces an update of all disks
+func handleReloadKey() {
+	log.Printf("Forcing reload...")
+	storage.UpdateDiskInfo()
+}
 
-				switch current {
-				// handle disk refresh
-				case `"\x12"` /* Ctrl+R */, `"r"`:
-					log.Printf("Forcing reload...")
-					storage.UpdateDiskInfo()
-				// handle exiting
-				case `"\x1b"` /* ESC */, `"q"`, `"\x03"`:
-					log.Printf("Exiting...")
-					termbox.Close()
-					os.Exit(0)
-				}
-			case termbox.EventError:
-				panic(ev.Err)
-			default:
-				log.Tracef("unhandled default case %v", ev)
-			}
-		}
-	}()
+// handleExitKey restores the terminal and exits
+func handleExitKey() {
+	log.Printf("Exiting...")
+	termbox.Close()
+	os.Exit(0)
 }
 
 func configureLogger() {

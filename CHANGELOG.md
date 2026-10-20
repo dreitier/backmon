@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- bumped Go to 1.26 (toolchain 1.26.10); Go 1.24 is no longer supported upstream
+- replaced the build workflow with a CI pipeline (lint, tests, smoke test, govulncheck, CodeQL, image scan)
+
+### Fixed
+- possible panic when registering the disk quota metric fails with an unexpected error
+- wrap underlying errors (`%w`) so callers can inspect them
+
 ## [3.2.2] - 2025-12-10
 ### Fixed
 - missing indirection in test

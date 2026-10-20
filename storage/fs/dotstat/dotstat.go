@@ -79,7 +79,7 @@ func updateStatAttributesFromYamlValues(fileInfo *fs.FileInfo, pathToStatFile st
 	err = yaml.Unmarshal(buf, c)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal: %v", err)
+		return nil, fmt.Errorf("unable to unmarshal: %w", err)
 	}
 
 	updateTimeField(c.BornAt, &fileInfo.BornAt)

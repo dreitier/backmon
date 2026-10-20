@@ -186,7 +186,7 @@ func (disk *DiskData) hashChanged(data io.Reader) (changed bool, err error) {
 	sha := sha1.New()
 	count, err := io.Copy(sha, data)
 	if err != nil {
-		return false, fmt.Errorf("failed to compute file hash: %s", err)
+		return false, fmt.Errorf("failed to compute file hash: %w", err)
 	}
 	_ = count
 	hash := make([]byte, 0, sha1.Size)

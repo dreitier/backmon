@@ -273,7 +273,8 @@ func (b *DiskMetric) UpdateDiskQuota(quota uint64) {
 	if quota > 0 {
 		err := registry.Register(b.diskQuota)
 		if err != nil {
-			if errors.Is(err, err.(prometheus.AlreadyRegisteredError)) {
+			var alreadyRegistered prometheus.AlreadyRegisteredError
+			if errors.As(err, &alreadyRegistered) {
 				log.Debugf("Disk quote metric is already registered")
 			} else {
 				log.Errorf("Failed to register disk quota metric, %v", err)

@@ -47,7 +47,7 @@ func ParseRawDefinitions(definitionsReader io.Reader) (*RawDefinition, error) {
 	cfg, err := config.Parse(definitionsReader)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse definitions file: %v", err)
+		return nil, fmt.Errorf("failed to parse definitions file: %w", err)
 	}
 
 	var parsed RawDefinition
@@ -92,7 +92,7 @@ func parseDirectorySection(cfg config.Raw, name string) (*RawDirectory, error) {
 			file, err := parseFileSection(fileConfig, defaults)
 
 			if err != nil {
-				return nil, fmt.Errorf("file %s in directory %s: %s", fileName, name, err)
+				return nil, fmt.Errorf("file %s in directory %s: %w", fileName, name, err)
 			}
 
 			files[fileName] = file
@@ -131,7 +131,7 @@ func parseFileSection(cfg config.Raw, defaults *Defaults) (*RawFile, error) {
 		schedule, err := cronexpr.Parse(cronExprString)
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse cron expression [%s]: %s", cronExprString, err)
+			return nil, fmt.Errorf("failed to parse cron expression [%s]: %w", cronExprString, err)
 		}
 
 		file.Schedule = schedule

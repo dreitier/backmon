@@ -112,7 +112,7 @@ func (c *LocalClient) Download(disk string, file *fs.FileInfo) (bytes io.ReadClo
 	bytes, err = os.Open(fileName)
 
 	if err != nil {
-		return nil, -1, "", fmt.Errorf("failed to open file for reading: %s", err)
+		return nil, -1, "", fmt.Errorf("failed to open file for reading: %w", err)
 	}
 
 	return bytes, length, "", nil
@@ -142,7 +142,7 @@ func (c *LocalClient) findDisk(diskName *string) (*string, error) {
 	names, err := c.GetDiskNames()
 
 	if err != nil {
-		return nil, fmt.Errorf("could not get available diskName names: %s", err)
+		return nil, fmt.Errorf("could not get available diskName names: %w", err)
 	}
 
 	if runtime.GOOS != "windows" && !strings.HasPrefix(*diskName, string(os.PathSeparator)) {

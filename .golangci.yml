@@ -36,6 +36,11 @@ linters:
         linters:
           - gosec
           - errcheck
+      # date components from time.Time are always within the range of the smaller unsigned types
+      - path: backup/timestamp\.go
+        linters:
+          - gosec
+        text: G115
 
 formatters:
   enable:

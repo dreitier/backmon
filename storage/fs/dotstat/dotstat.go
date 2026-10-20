@@ -63,11 +63,7 @@ func IsStatFile(fileName string) bool {
 
 // RemoveDotStatSuffix Removes the `.stat` suffix from the provided file path if present
 func RemoveDotStatSuffix(pathToDotStatFile string) string {
-	if strings.HasSuffix(pathToDotStatFile, DotStatFileSuffix) {
-		pathToDotStatFile = pathToDotStatFile[:len(pathToDotStatFile)-len(DotStatFileSuffix)]
-	}
-
-	return pathToDotStatFile
+	return strings.TrimSuffix(pathToDotStatFile, DotStatFileSuffix)
 }
 
 // From the provided YAML file the keys are read an then accordingly applied to the file's stat attributes (BornAt, ModifiedAt, ArchivedAt)

@@ -80,12 +80,13 @@ func configureTerminal() {
 				d := data[:ev.N]
 				current = fmt.Sprintf("%q", d)
 
+				switch current {
 				// handle disk refresh
-				if current == `"\x12"` /* Ctrl+R */ || current == `"r"` {
+				case `"\x12"` /* Ctrl+R */, `"r"`:
 					log.Printf("Forcing reload...")
 					storage.UpdateDiskInfo()
-					// handle exiting
-				} else if current == `"\x1b"` /* ESC */ || current == `"q"` || current == `"\x03"` {
+				// handle exiting
+				case `"\x1b"` /* ESC */, `"q"`, `"\x03"`:
 					log.Printf("Exiting...")
 					termbox.Close()
 					os.Exit(0)

@@ -3,7 +3,6 @@ package backup
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -106,8 +105,8 @@ func parseDirectories(raw *RawDefinition) ([]*Directory, error) {
 		}
 
 		if _, exists := aliases[alias]; exists {
-			return nil, errors.New(fmt.Sprintf(
-				"Cannot have multiple directory definitions with the alias: '%s'", alias))
+			return nil, fmt.Errorf(
+				"cannot have multiple directory definitions with the alias: '%s'", alias)
 		} else {
 			aliases[alias] = empty{}
 		}
@@ -136,7 +135,7 @@ func applyFusion(variables []VariableDefinition, fuseVars []string) error {
 		}
 
 		if !match {
-			return errors.New(fmt.Sprintf("cannot fuse values of undefined variable '%s'", fuseVar))
+			return fmt.Errorf("cannot fuse values of undefined variable '%s'", fuseVar)
 		}
 	}
 
@@ -351,9 +350,7 @@ func ParsePathPattern(pattern string) (filter DirectoryFilter, variableOffsets m
 		return filter, nil
 	}
 
-	if strings.HasPrefix(normalized, "./") {
-		normalized = normalized[len("./"):]
-	}
+	normalized = strings.TrimPrefix(normalized, "./")
 
 	// normalized could be ['.', 'backup', 'backup/subdir1']
 	captures, leftovers := splitPattern(normalized)

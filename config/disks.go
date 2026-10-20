@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// behaviour enum
+// behavior enum
 const (
 	DisksBehaviourInclude = iota
 	DisksBehaviourExclude = iota
@@ -32,7 +32,7 @@ type DisksConfiguration struct {
 	includeRegExps []SingleDiskConfiguration
 	exclude        map[string]SingleDiskConfiguration
 	excludeRegExps []SingleDiskConfiguration
-	// fallback to that behaviour if a policy does not match or is conflicting
+	// fallback to that behavior if a policy does not match or is conflicting
 	behaviourForAllOthers int
 }
 

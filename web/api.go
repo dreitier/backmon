@@ -133,22 +133,3 @@ func findDirectory(
 	directoryNotFound(w, directoryName)
 	return nil
 }
-
-func findFile(
-	w http.ResponseWriter,
-	diskName string,
-	directoryName string,
-	fileName string,
-) *backup.FileDefinition {
-	dir := findDirectory(w, diskName, directoryName)
-	if dir == nil {
-		return nil
-	}
-	for _, file := range dir.Files {
-		if file.Alias == fileName {
-			return file
-		}
-	}
-	fileNotFound(w, fileName)
-	return nil
-}

@@ -117,7 +117,8 @@ func getClient(c *S3Client) (*s3.Client, error) {
 
 	if c.TLSSkipVerify {
 		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			// explicit opt-in via `tls_skip_verify`, e.g. for MinIO with self-signed certificates
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // see above
 		}
 		httpClient := &http.Client{Transport: tr}
 		awscfg.HTTPClient = httpClient

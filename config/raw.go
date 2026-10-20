@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"reflect"
 	"regexp"
@@ -135,7 +136,7 @@ func (c Raw) Bytes(key string) uint64 {
 	i := strings.IndexFunc(s, unicode.IsLetter)
 
 	if i >= 0 {
-		s = strings.Replace(s, " ", "", -1)
+		s = strings.ReplaceAll(s, " ", "")
 		bytes, err := bytefmt.ToBytes(s)
 		if err == nil {
 			return bytes
@@ -155,7 +156,9 @@ func (c Raw) Duration(key string) time.Duration {
 	}
 	s, ok := val.(string)
 	if !ok {
-		return Day * time.Duration(asUint64(val))
+		// plain numbers are interpreted as days; cap them to prevent an overflow of time.Duration
+		days := min(asUint64(val), uint64(math.MaxInt64/int64(Day)))
+		return Day * time.Duration(days)
 	}
 
 	match := durationExpr.FindStringSubmatch(s)
@@ -203,15 +206,15 @@ func asUint64(val interface{}) uint64 {
 	}
 	switch v := val.(type) {
 	case int8:
-		return uint64(v)
+		return nonNegative(int64(v))
 	case int16:
-		return uint64(v)
+		return nonNegative(int64(v))
 	case int32:
-		return uint64(v)
+		return nonNegative(int64(v))
 	case int64:
-		return uint64(v)
+		return nonNegative(v)
 	case int:
-		return uint64(v)
+		return nonNegative(int64(v))
 	case uint8:
 		return uint64(v)
 	case uint16:
@@ -229,6 +232,15 @@ func asUint64(val interface{}) uint64 {
 		}
 	}
 	return 0
+}
+
+// nonNegative converts v to an uint64; negative values (e.g. a misconfigured `retention-count: -1`) become 0
+// instead of wrapping around to a huge number
+func nonNegative(v int64) uint64 {
+	if v < 0 {
+		return 0
+	}
+	return uint64(v)
 }
 
 func asInt64(val interface{}) int64 {
@@ -253,9 +265,9 @@ func asInt64(val interface{}) int64 {
 	case uint32:
 		return int64(v)
 	case uint64:
-		return int64(v)
+		return int64(min(v, math.MaxInt64))
 	case uint:
-		return int64(v)
+		return int64(min(uint64(v), math.MaxInt64))
 	case string:
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {

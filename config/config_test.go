@@ -72,7 +72,7 @@ environments:
 	assertion.NotNil(sut)
 	assertion.Equal(1, len(sut.Environments()))
 
-	var diskCfg *DisksConfiguration = sut.Environments()[0].Client.Disks
+	diskCfg := sut.Environments()[0].Client.Disks
 	assertion.NotNil(diskCfg)
 
 	assertion.Equal(1, len(diskCfg.include))

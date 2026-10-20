@@ -3,10 +3,12 @@ package web
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/dreitier/backmon/config"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"net/http"
+
+	"github.com/dreitier/backmon/config"
 )
 
 func StartServer() {

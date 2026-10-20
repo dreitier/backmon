@@ -12,11 +12,12 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dreitier/backmon/backup"
 	"github.com/dreitier/backmon/config"
 	"github.com/dreitier/backmon/metrics"
 	fs "github.com/dreitier/backmon/storage/fs"
-	log "github.com/sirupsen/logrus"
 )
 
 var (

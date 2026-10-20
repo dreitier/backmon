@@ -3,13 +3,15 @@ package fs
 // Common data structures for files. As S3 objects are also files, we are using our own filesystem abstraction.
 import (
 	"fmt"
-	fs "github.com/dreitier/backmon/storage/fs"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	fs "github.com/dreitier/backmon/storage/fs"
 )
 
 const DotStatFileSuffix = ".stat"

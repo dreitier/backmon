@@ -3,14 +3,16 @@ package provider
 import (
 	"errors"
 	"fmt"
-	fs "github.com/dreitier/backmon/storage/fs"
-	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	fs "github.com/dreitier/backmon/storage/fs"
+	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
 )
 
 type LocalClient struct {

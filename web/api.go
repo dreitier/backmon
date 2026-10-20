@@ -2,11 +2,14 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dreitier/backmon/backup"
 	"github.com/dreitier/backmon/storage"
-	"io"
-	"fmt"
-	"net/http"
 )
 
 func GetDisks(w http.ResponseWriter) {
@@ -78,12 +81,12 @@ func Download(
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 
 	_, err = io.Copy(w, data)
-
-	if err != nil && err != io.EOF {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	_ = data.Close()
+
+	if err != nil {
+		// headers and parts of the body have already been sent, so the status code can't be changed anymore
+		log.Errorf("Failed to stream file %s to client: %v", fileName, err)
+	}
 }
 
 func writeData(w http.ResponseWriter, data interface{}) {

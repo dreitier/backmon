@@ -1,9 +1,10 @@
 package config
 
 import (
-	log "github.com/sirupsen/logrus"
 	"regexp"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // behaviour enum

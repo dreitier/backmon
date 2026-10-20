@@ -2,11 +2,13 @@ package metrics
 
 import (
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"time"
 
-	fs "github.com/dreitier/backmon/storage/fs"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/prometheus/client_golang/prometheus"
+
+	fs "github.com/dreitier/backmon/storage/fs"
 )
 
 const (

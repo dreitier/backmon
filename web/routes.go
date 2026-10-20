@@ -1,14 +1,16 @@
 package web
 
 import (
-	"github.com/dreitier/backmon/config"
-	"github.com/dreitier/backmon/metrics"
-	"github.com/goji/httpauth"
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"sync"
+
+	"github.com/goji/httpauth"
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/dreitier/backmon/config"
+	"github.com/dreitier/backmon/metrics"
 )
 
 type RouteConfiguration struct {

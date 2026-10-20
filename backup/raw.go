@@ -2,11 +2,13 @@ package backup
 
 import (
 	"fmt"
-	"github.com/dreitier/backmon/config"
-	"github.com/gorhill/cronexpr"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"time"
+
+	"github.com/gorhill/cronexpr"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/dreitier/backmon/config"
 )
 
 const (

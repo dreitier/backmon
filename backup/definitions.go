@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dreitier/backmon/config"
-	"github.com/gorhill/cronexpr"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"kythe.io/kythe/go/util/datasize"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/gorhill/cronexpr"
+	log "github.com/sirupsen/logrus"
+	"kythe.io/kythe/go/util/datasize"
+
+	"github.com/dreitier/backmon/config"
 )
 
 const (

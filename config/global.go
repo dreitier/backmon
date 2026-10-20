@@ -1,8 +1,9 @@
 package config
 
 import (
-	log "github.com/sirupsen/logrus"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type GlobalConfiguration struct {

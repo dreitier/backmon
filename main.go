@@ -8,12 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	termbox "github.com/nsf/termbox-go"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dreitier/backmon/config"
 	"github.com/dreitier/backmon/metrics"
 	"github.com/dreitier/backmon/storage"
 	"github.com/dreitier/backmon/web"
-	termbox "github.com/nsf/termbox-go"
-	log "github.com/sirupsen/logrus"
 )
 
 const app = "backmon"

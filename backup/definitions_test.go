@@ -2,15 +2,16 @@ package backup
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/gorhill/cronexpr"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"math"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/gorhill/cronexpr"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_parseRawDefinitions(t *testing.T) {

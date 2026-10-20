@@ -19,10 +19,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go/logging"
 
+	log "github.com/sirupsen/logrus"
+
 	cfg "github.com/dreitier/backmon/config"
 	fs "github.com/dreitier/backmon/storage/fs"
 	dotstat "github.com/dreitier/backmon/storage/fs/dotstat"
-	log "github.com/sirupsen/logrus"
 )
 
 type S3Client struct {

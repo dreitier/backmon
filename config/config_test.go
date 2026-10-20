@@ -2,8 +2,9 @@ package config
 
 import (
 	//	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_GH29_PR31_NewConfigurationInstance_canDetectRegionForFirstEnvironment(t *testing.T) {

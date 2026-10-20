@@ -1,10 +1,7 @@
 package config
 
 import (
-	"code.cloudfoundry.org/bytefmt"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"reflect"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"code.cloudfoundry.org/bytefmt"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 const (

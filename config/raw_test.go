@@ -1,9 +1,10 @@
 package config
 
 import (
+	"testing"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_VariableInterpolation_1_detectsRegex(t *testing.T) {

@@ -7,10 +7,21 @@ GIT_COMMIT ?= $(shell git rev-list -1 HEAD | cut -c1-7)
 GIT_TAG ?= $(shell git tag --points-at HEAD)
 TAG ?= latest
 
+.PHONY: all test fmt lint hooks build clean docker-build docker-push
+
 all: build
 
 test:
 	go test -v ./...
+
+fmt:
+	golangci-lint fmt
+
+lint:
+	golangci-lint run
+
+hooks:
+	pre-commit install
 
 build:
 	go mod download

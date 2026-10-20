@@ -14,6 +14,16 @@ You can find our official documentation at [https://dreitier.github.io/backmon-d
 ### Dependencies
 During build time, *backmon* requires Go 1.26 or later.
 
+### Development
+CI runs [golangci-lint](https://golangci-lint.run) (including `gofmt`/`goimports`) on every pull request. To catch issues before pushing, install [pre-commit](https://pre-commit.com) and enable the hooks once per clone:
+
+```bash
+sudo dnf install pre-commit   # or: pipx install pre-commit
+make hooks                    # runs `pre-commit install`
+```
+
+`make fmt` formats the code, `make lint` runs the linters, `make test` runs the tests.
+
 ### Helm
 We provide a Helm chart for *backmon* which you can easily install:
 

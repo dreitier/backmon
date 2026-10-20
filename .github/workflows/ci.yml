@@ -1,14 +1,14 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
+  # pushes to main run this pipeline through release.yml (workflow_call)
   pull_request:
   # weekly run so new CVEs in dependencies / the Go stdlib are detected even without commits
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
+  # the release workflow runs the full pipeline before publishing
+  workflow_call:
 
 permissions:
   contents: read
@@ -22,6 +22,7 @@ env:
   GOVULNCHECK_VERSION: v1.8.0
   ACTIONLINT_VERSION: 1.7.11
   PROMETHEUS_VERSION: v3.14.0
+  GORELEASER_VERSION: v2.18.3
 
 jobs:
   lint:
@@ -55,8 +56,7 @@ jobs:
         uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile
-          # TODO: lower to "warning" once the Dockerfile pins its base images
-          failure-threshold: error
+          failure-threshold: warning
 
   test:
     name: Test (Go ${{ matrix.go }})
@@ -150,6 +150,26 @@ jobs:
           kill "$(cat backmon.pid)" 2>/dev/null || true
           cat backmon.log
 
+  release-check:
+    name: GoReleaser (snapshot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Check config and build all release binaries
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: ${{ env.GORELEASER_VERSION }}
+          args: build --snapshot --clean
+
   govulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
@@ -220,19 +240,48 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # amd64 only for now: the Makefile hard-codes GOARCH=amd64 (multi-arch comes with the release rework)
-      - name: Build image
+      # same platforms as the release; multi-platform images can't be loaded into the local docker daemon
+      - name: Build multi-arch image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: false
-          load: true
-          tags: backmon:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             GIT_TAG=ci
+
+      # amd64 image from cache, loaded for the smoke test and the Trivy scan
+      - name: Load amd64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: backmon:ci
+          cache-from: type=gha
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            GIT_TAG=ci
+
+      - name: Smoke test image
+        run: |
+          mkdir -p "$RUNNER_TEMP/image-smoke"
+          printf 'port: 8000\nenvironments:\n  samples:\n    path: /samples\n' > "$RUNNER_TEMP/image-smoke/config.yaml"
+          docker run -d --name backmon -p 8000:8000 \
+            -v "$RUNNER_TEMP/image-smoke/config.yaml:/etc/backmon/config.yaml:ro" \
+            -v "$GITHUB_WORKSPACE/_samples:/samples:ro" \
+            backmon:ci
+          if ! curl -fsS --retry 15 --retry-delay 1 --retry-all-errors http://localhost:8000/metrics | grep -q '^backmon_disks_total'; then
+            docker logs backmon
+            exit 1
+          fi
+          # the image must not run as root
+          test "$(docker inspect --format '{{.Config.User}}' backmon:ci)" = "65532:65532"
+          docker rm -f backmon
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

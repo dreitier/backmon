@@ -1,0 +1,61 @@
+# GoReleaser builds the release binaries and uploads them to the GitHub release created by semantic-release.
+# Docker images are built separately from the Dockerfile in .github/workflows/release.yml.
+# https://goreleaser.com/customization/
+version: 2
+
+project_name: backmon
+
+builds:
+  - id: backmon
+    main: .
+    binary: backmon
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.gitCommit={{ .ShortCommit }} -X main.gitTag={{ .Tag }}
+    # reproducible builds
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: backmon
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE.md
+      - README.md
+      - CHANGELOG.md
+      - config.yaml.template
+      - backmon.service
+
+checksum:
+  name_template: checksums.txt
+
+# one SPDX SBOM per archive, generated with syft
+sboms:
+  - artifacts: archive
+
+# semantic-release creates the tag and the GitHub release with its notes;
+# GoReleaser only attaches the archives, checksums and SBOMs to it
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: dreitier
+    name: backmon
+  mode: keep-existing
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}"

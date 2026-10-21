@@ -272,7 +272,7 @@ func (c *S3Client) downloadToTempFile(diskName *string, key *string, parentPath 
 	tempFile, err := os.CreateTemp(os.TempDir(), "backmon_"+strings.ReplaceAll(strings.ReplaceAll(parentPath, "/", "_"), "\\", "_"))
 
 	if err != nil {
-		return "", fmt.Errorf("unable to create temporary file: %s", err)
+		return "", fmt.Errorf("unable to create temporary file: %w", err)
 	}
 
 	_, err = io.Copy(tempFile, out.Body)
@@ -284,7 +284,7 @@ func (c *S3Client) downloadToTempFile(diskName *string, key *string, parentPath 
 
 	if err != nil {
 		_ = os.Remove(tempFile.Name())
-		return "", fmt.Errorf("unable to write temporary file: %s", err)
+		return "", fmt.Errorf("unable to write temporary file: %w", err)
 	}
 
 	return tempFile.Name(), nil

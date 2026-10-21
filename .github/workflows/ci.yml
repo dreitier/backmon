@@ -18,9 +18,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  GOLANGCI_LINT_VERSION: v2.14.0
   GOVULNCHECK_VERSION: v1.8.0
-  ACTIONLINT_VERSION: 1.7.11
   PROMETHEUS_VERSION: v3.14.0
   GORELEASER_VERSION: v2.18.3
 
@@ -37,6 +35,24 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # single source of truth for the linter versions: .pre-commit-config.yaml (updated by Dependabot)
+      - name: Read linter versions from .pre-commit-config.yaml
+        id: versions
+        run: |
+          rev_of() {
+            awk -v repo="repo: $1" 'index($0, repo) { found = 1; next } found && $1 == "rev:" { print $2; exit }' .pre-commit-config.yaml
+          }
+          golangci_lint=$(rev_of https://github.com/golangci/golangci-lint)
+          actionlint=$(rev_of https://github.com/rhysd/actionlint)
+          if [ -z "$golangci_lint" ] || [ -z "$actionlint" ]; then
+            echo "::error file=.pre-commit-config.yaml::could not read the golangci-lint/actionlint versions"
+            exit 1
+          fi
+          {
+            echo "golangci-lint=${golangci_lint}"
+            echo "actionlint=${actionlint#v}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Check go.mod / go.sum are tidy
         run: |
           go mod tidy
@@ -45,10 +61,12 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          version: ${{ steps.versions.outputs.golangci-lint }}
 
       - name: Lint GitHub Actions workflows
         if: ${{ !cancelled() }}
+        env:
+          ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
         run: docker run --rm -v "$PWD:/repo" --workdir /repo "rhysd/actionlint:${ACTIONLINT_VERSION}" -color
 
       - name: Lint Dockerfile

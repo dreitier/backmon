@@ -65,11 +65,31 @@ Tags: `x.y.z`, `x.y`, `x` and `latest`. Mount your configuration to `/etc/backmo
 The image is based on `distroless/static` and runs as the non-root user `65532`. If backmon has to read backup files that are only readable by root or a specific group, set the user or `fsGroup` accordingly (e.g. `--user` for `docker run`, `securityContext` in Kubernetes).
 
 ### Verifying releases
-Binaries and images come with [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations):
+Releases are signed keyless with [Sigstore](https://www.sigstore.dev/): the signatures are bound to the identity of the release workflow in this repository, no keys are involved.
+
+**Binaries and SBOMs** – `checksums.txt` is signed (`checksums.txt.sigstore.json` in the release) and lists the SHA-256 of every archive and SBOM:
 
 ```bash
-gh attestation verify backmon_4.0.0_linux_amd64.tar.gz --owner dreitier
-gh attestation verify oci://ghcr.io/dreitier/backmon:4.0.0 --owner dreitier
+cosign verify-blob checksums.txt \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/dreitier/backmon/.github/workflows/release.yml@refs/heads/main" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+sha256sum --ignore-missing -c checksums.txt
+```
+
+**Docker images** (Docker Hub and GHCR):
+
+```bash
+cosign verify dreitier/backmon:4 \
+  --certificate-identity "https://github.com/dreitier/backmon/.github/workflows/release.yml@refs/heads/main" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+In addition, binaries, SBOMs and images come with [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations) (SLSA), which also show the commit and workflow run they were built from:
+
+```bash
+gh attestation verify backmon_4.0.4_linux_amd64.tar.gz --owner dreitier
+gh attestation verify oci://ghcr.io/dreitier/backmon:4.0.4 --owner dreitier
 ```
 
 ## Development

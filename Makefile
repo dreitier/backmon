@@ -38,7 +38,7 @@ build:
 
 # builds all release binaries into dist/ without publishing anything
 snapshot:
-	goreleaser release --snapshot --clean --skip=sbom
+	goreleaser release --snapshot --clean --skip=sbom,sign
 
 clean:
 	go clean

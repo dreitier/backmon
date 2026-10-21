@@ -290,6 +290,9 @@ jobs:
           build-mode: autobuild
 
       - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          # same category on PRs (ci.yml) and on main (release.yml calls ci.yml), so PRs can be compared with main
+          category: /language:go
 
   dependency-review:
     name: Dependency review

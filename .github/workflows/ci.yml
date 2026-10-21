@@ -182,7 +182,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Check config and build all release binaries
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
           version: ${{ env.GORELEASER_VERSION }}
@@ -221,12 +221,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: github/codeql-action/init@cee97f86b972a3ded3c58d04148362b193ddc518 # v4.38.3
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           languages: go
           build-mode: autobuild
 
-      - uses: github/codeql-action/analyze@cee97f86b972a3ded3c58d04148362b193ddc518 # v4.38.3
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
 
   dependency-review:
     name: Dependency review
@@ -314,7 +314,7 @@ jobs:
 
       - name: Upload Trivy results
         if: always() && hashFiles('trivy.sarif') != ''
-        uses: github/codeql-action/upload-sarif@cee97f86b972a3ded3c58d04148362b193ddc518 # v4.38.3
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: trivy.sarif
           category: trivy

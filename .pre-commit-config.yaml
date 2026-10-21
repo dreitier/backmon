@@ -3,7 +3,7 @@
 # Run manually on all files: `pre-commit run --all-files`
 repos:
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.14.0 # also used by the CI lint job
+    rev: v2.15.0 # also used by the CI lint job
     hooks:
       - id: golangci-lint-config-verify
       # formats the files (gofmt, goimports); the commit is aborted if anything changed, so review and re-add
@@ -12,7 +12,7 @@ repos:
       - id: golangci-lint
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11 # also used by the CI lint job
+    rev: v1.7.12 # also used by the CI lint job
     hooks:
       - id: actionlint
 

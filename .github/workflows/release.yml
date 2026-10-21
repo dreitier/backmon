@@ -34,6 +34,7 @@ jobs:
       contents: read
       security-events: write
       pull-requests: write
+      actions: read
 
   semantic-release:
     name: Version & GitHub release

@@ -84,6 +84,14 @@ jobs:
       matrix:
         # "go.mod" = the version the project declares, "stable" = latest Go release
         go: [go.mod, stable]
+    # S3-compatible server for the integration tests in storage/provider/s3_integration_test.go
+    services:
+      s3:
+        image: adobe/s3mock:5.2.3
+        ports:
+          - 9090:9090
+    env:
+      BACKMON_TEST_S3_ENDPOINT: http://localhost:9090
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -93,6 +101,9 @@ jobs:
         with:
           go-version-file: ${{ matrix.go == 'go.mod' && 'go.mod' || '' }}
           go-version: ${{ matrix.go != 'go.mod' && matrix.go || '' }}
+
+      - name: Wait for the S3 test server
+        run: curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null "$BACKMON_TEST_S3_ENDPOINT"
 
       - name: Run tests
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
@@ -112,7 +123,59 @@ jobs:
         with:
           name: coverage
           path: coverage.out
-          retention-days: 14
+          # runs on main are the baseline for the coverage report of PRs
+          retention-days: 90
+
+  coverage:
+    name: Coverage report
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # download the coverage of main from the latest release workflow run
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage
+          path: current
+
+      - name: Download coverage of main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --branch main --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ] || ! gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n coverage -D base; then
+            echo "::notice::No coverage of main found, the report shows absolute values only"
+          fi
+
+      - name: Build report
+        run: |
+          python3 .github/scripts/coverage-report.py current/coverage.out base/coverage.out > coverage-report.md
+          cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # one comment per PR, updated on every push; not possible for PRs from forks or Dependabot
+      # (read-only token), the report is in the job summary then
+      - name: Comment on pull request
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          comment_id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- coverage-report -->"))) | .id' | head -n 1)
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -F body=@coverage-report.md > /dev/null
+          else
+            gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body-file coverage-report.md
+          fi
 
   smoke:
     name: Smoke test (/metrics)
@@ -227,6 +290,9 @@ jobs:
           build-mode: autobuild
 
       - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          # same category on PRs (ci.yml) and on main (release.yml calls ci.yml), so PRs can be compared with main
+          category: /language:go
 
   dependency-review:
     name: Dependency review

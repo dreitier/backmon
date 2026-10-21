@@ -1,0 +1,85 @@
+# Dependency updates. "daily" runs Monday to Friday.
+# Commit prefixes decide whether semantic-release publishes a new version when the PR is merged:
+#   build(deps): ...  -> patch release (code and image that users run)
+#   ci(deps): ...     -> no release (pipeline and release tooling)
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      # the AWS SDK modules are released together and should be updated together
+      aws-sdk:
+        patterns:
+          - github.com/aws/*
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # stay on Go 1.26 until Fedora ships Go 1.27 (the code has to build with Fedora's Go)
+      - dependency-name: golang
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      semantic-release:
+        patterns:
+          - "*"
+    ignore:
+      # 10.x needs a newer conventional-changelog-writer than semantic-release 25 bundles
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types:
+          - version-update:semver-major
+
+  # hook versions in .pre-commit-config.yaml; the CI lint job uses the same golangci-lint/actionlint versions
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: daily
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      pre-commit:
+        patterns:
+          - "*"

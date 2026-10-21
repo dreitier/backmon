@@ -6,13 +6,22 @@ EXECUTABLE=backmon
 GIT_COMMIT ?= $(shell git rev-list -1 HEAD | cut -c1-7)
 GIT_TAG ?= $(shell git tag --points-at HEAD)
 TAG ?= latest
+# S3-compatible server for the S3 integration tests (same image as in .github/workflows/ci.yml)
+S3MOCK_IMAGE ?= adobe/s3mock:5.2.3
 
-.PHONY: all test fmt lint hooks build snapshot clean docker-build
+.PHONY: all test test-s3 fmt lint hooks build snapshot clean docker-build pin-images
 
 all: build
 
 test:
 	go test -v ./...
+
+# runs the S3 integration tests against S3Mock in Docker
+test-s3:
+	docker run -d --rm --name backmon-s3mock -p 9090:9090 $(S3MOCK_IMAGE) > /dev/null
+	curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null http://localhost:9090/ ; \
+	BACKMON_TEST_S3_ENDPOINT=http://localhost:9090 go test -race -count=1 -v -run S3 ./storage/provider/ ; \
+	status=$$? ; docker stop backmon-s3mock > /dev/null ; exit $$status
 
 fmt:
 	golangci-lint fmt
@@ -34,6 +43,10 @@ snapshot:
 clean:
 	go clean
 	rm -rf vendor dist $(EXECUTABLE)
+
+# pins the Dockerfile's base images to their current digest (requires docker buildx); Dependabot keeps them updated
+pin-images:
+	.github/scripts/pin-images.py Dockerfile
 
 # local image only; releases are published by .github/workflows/release.yml
 docker-build:

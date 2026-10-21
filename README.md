@@ -1,4 +1,8 @@
 # backmon - Monitoring of backup files in filesystems and object storages
+
+[![CI](https://github.com/dreitier/backmon/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dreitier/backmon/actions/workflows/release.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dreitier/backmon/badge)](https://scorecard.dev/viewer/?uri=github.com/dreitier/backmon)
+
 *backmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
 
 ## Description
@@ -86,8 +90,15 @@ To try the GoReleaser build locally, run `make snapshot`.
 ### Running tests
 
 ```bash
-make test
+make test       # unit tests; S3 integration tests are skipped
+make test-s3    # S3 integration tests against S3Mock (requires Docker)
 ```
+
+The S3 integration tests in `storage/provider/s3_integration_test.go` run against any S3-compatible server given in `BACKMON_TEST_S3_ENDPOINT` (e.g. `http://localhost:9090`). CI runs all tests and comments on each pull request with its test coverage compared to `main`.
+
+### Base images
+
+The Dockerfile's base images are pinned by digest; Dependabot keeps tags and digests up to date. To refresh the digests by hand, run `make pin-images` (requires Docker).
 
 ## Changelog
 The changelog is kept in the [CHANGELOG.md](CHANGELOG.md) file.

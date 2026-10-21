@@ -1,7 +1,7 @@
 module github.com/dreitier/backmon
 
 require (
-	code.cloudfoundry.org/bytefmt v0.56.0
+	code.cloudfoundry.org/bytefmt v0.94.0
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
@@ -45,7 +45,7 @@ require (
 	github.com/prometheus/common v0.67.2 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 

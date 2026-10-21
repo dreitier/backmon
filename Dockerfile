@@ -2,7 +2,7 @@
 
 # Builder runs on the host platform and cross-compiles for the target platform,
 # so multi-arch images don't need QEMU.
-FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -o /out/backmon .
 
 # Runtime image: static binary, CA certificates and tzdata only; no shell, runs as UID 65532
-FROM gcr.io/distroless/static-debian13:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:516757106de35205efb70b91ba03f6f1298424a0678c603255cf2852a7000087
 
 LABEL org.opencontainers.image.source="https://github.com/dreitier/backmon" \
       org.opencontainers.image.description="Monitoring of backup files in filesystems and object storages" \

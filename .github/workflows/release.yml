@@ -207,3 +207,32 @@ jobs:
           subject-name: ghcr.io/dreitier/backmon
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+  # helm-charts opens a PR that updates the backmon chart to this version (.github/workflows/update-backmon.yaml there)
+  helm-chart:
+    name: Trigger Helm chart update
+    needs: [semantic-release, image]
+    if: needs.semantic-release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Create GitHub App token for dreitier/helm-charts
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: dreitier
+          repositories: helm-charts
+          # repository_dispatch requires write access to the repository contents
+          permission-contents: write
+
+      - name: Send repository_dispatch to dreitier/helm-charts
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          VERSION: ${{ needs.semantic-release.outputs.version }}
+        run: |
+          gh api --method POST repos/dreitier/helm-charts/dispatches \
+            -f event_type=backmon-released \
+            -f "client_payload[version]=${VERSION}"
+          echo "Requested Helm chart update to backmon ${VERSION}" >> "$GITHUB_STEP_SUMMARY"

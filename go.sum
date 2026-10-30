@@ -1,5 +1,5 @@
-code.cloudfoundry.org/bytefmt v0.95.0 h1:kvNsgNynDcyfilMkcCYlsX5auJCZ7jaJNCgPbMTwWyU=
-code.cloudfoundry.org/bytefmt v0.95.0/go.mod h1:r9knDHdLE4JX4gE2ySV4oMu2SIByYwuTD+8DcxhIHOI=
+code.cloudfoundry.org/bytefmt v0.96.0 h1:5N1q+e5OI3tbKE69jqDTBNQx4HqeO6YQtLtIVaoCsKU=
+code.cloudfoundry.org/bytefmt v0.96.0/go.mod h1:3han47dKyNfal3tzzrMYWtJM9HULc+XKSfPEC9PkvLI=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/aws/aws-sdk-go-v2 v1.47.4 h1:bTvk6UdSSSvaQsfLVj1JRDEEqj/PDRwGf1KanaRzau0=
@@ -56,8 +56,8 @@ github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d h1:lBXNCxVENCipq4D1I
 github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d/go.mod h1:nnjvkQ9ptGaCkuDUx6wNykzzlUixGxvkme+H/lnzb+A=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
-github.com/google/pprof v0.0.0-20261016150608-1facf8f91b50 h1:PlNWJRxu5APSV0pWqfIsZ0qt9OOGHSWfZQ4zvx+WgWs=
-github.com/google/pprof v0.0.0-20261016150608-1facf8f91b50/go.mod h1:yUo1AMMpsPIDFGuwDK8nLcf8+vvAd5l2O6JDZ6hpwrM=
+github.com/google/pprof v0.0.0-20261026192309-dbd0ed30aa88 h1:BnzMe/RUfFezpFwXsOWHmSMNO8qt7755OL25C+AezGQ=
+github.com/google/pprof v0.0.0-20261026192309-dbd0ed30aa88/go.mod h1:yUo1AMMpsPIDFGuwDK8nLcf8+vvAd5l2O6JDZ6hpwrM=
 github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75 h1:f0n1xnMSmBLzVfsMMvriDyA75NB/oBgILX2GcHXIQzY=
 github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75/go.mod h1:g2644b03hfBX9Ov0ZBDgXXens4rxSxmqFBbhvKv2yVA=
 github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=

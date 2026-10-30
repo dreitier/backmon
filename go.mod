@@ -1,7 +1,7 @@
 module github.com/dreitier/backmon
 
 require (
-	code.cloudfoundry.org/bytefmt v0.95.0
+	code.cloudfoundry.org/bytefmt v0.96.0
 	github.com/aws/aws-sdk-go-v2 v1.47.4
 	github.com/aws/aws-sdk-go-v2/config v1.33.10
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.10

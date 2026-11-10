@@ -12,7 +12,8 @@ import (
 	"github.com/dreitier/backmon/config"
 )
 
-func StartServer() {
+// StartServer blocks while the webserver is running and returns the error which stopped it
+func StartServer() error {
 	port := config.GetInstance().Global().HttpPort()
 	listenAddr := fmt.Sprintf(":%d", port)
 
@@ -53,11 +54,11 @@ func StartServer() {
 
 	// if the user has provided a TLS configuration, start with TLS
 	if userDefinedTlsConfiguration != nil {
-		log.Error(srv.ListenAndServeTLS(userDefinedTlsConfiguration.CertificatePath, userDefinedTlsConfiguration.PrivateKeyPath))
-	} else {
-		// if no TLS configuration is present, work in unencrypted mode
-		log.Error(srv.ListenAndServe())
+		return srv.ListenAndServeTLS(userDefinedTlsConfiguration.CertificatePath, userDefinedTlsConfiguration.PrivateKeyPath)
 	}
+
+	// if no TLS configuration is present, work in unencrypted mode
+	return srv.ListenAndServe()
 }
 
 // strictTLSConfig is used for `strict: true`. The key exchanges are left to Go's defaults,

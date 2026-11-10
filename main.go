@@ -51,9 +51,13 @@ func main() {
 	storage.InitializeConfiguration()
 	scheduleDiskUpdates()
 
-	// #12: in case of an error during webserver startup (e.g. missing certificate or privat key), the console output gets scrambled.
-	// this is because of @see https://github.com/nsf/termbox-go/issues/233. If we use a `defer termbox.Close()`, the whole output would be swallowed.
-	web.StartServer()
+	err := web.StartServer()
+
+	// #12: restore the terminal before printing the error. termbox.Close() clears the screen
+	// (https://github.com/nsf/termbox-go/issues/233), so a message printed earlier would be lost,
+	// and without Close() the console stays scrambled.
+	termbox.Close()
+	log.Fatalf("Webserver stopped: %v", err)
 }
 
 func configureTerminal() {

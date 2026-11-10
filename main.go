@@ -7,6 +7,9 @@ import (
 	"syscall"
 	"time"
 
+	// embed the time zone database: `timezone` in backup definitions must also work on Windows and in minimal images
+	_ "time/tzdata"
+
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
 

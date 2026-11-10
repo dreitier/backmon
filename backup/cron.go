@@ -8,6 +8,9 @@ import (
 	"github.com/dreitier/backmon/config"
 )
 
+// FindPrevious returns the latest point in time before moment at which the schedule fired, i.e. when the latest
+// backup is expected to have been created. The schedule is evaluated in the time zone of moment, so pass
+// moment.In(location) to evaluate it in a specific time zone. The zero time is returned if there is no schedule.
 func FindPrevious(cron *cronexpr.Expression, moment time.Time) time.Time {
 	if cron == nil {
 		return time.Time{}

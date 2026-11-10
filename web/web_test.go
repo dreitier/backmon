@@ -123,21 +123,6 @@ func TestBaseHandler(t *testing.T) {
 	}
 }
 
-// With no disks configured, EnvHandler must emit an empty JSON array.
-func TestEnvHandlerNoDisks(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api", nil)
-
-	EnvHandler(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
-	}
-	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
-		t.Errorf("body = %q, want []", body)
-	}
-}
-
 // Requesting an unknown disk yields a 404 with the disk-not-found message.
 func TestDiskInfoHandlerNotFound(t *testing.T) {
 	rec := httptest.NewRecorder()

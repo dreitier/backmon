@@ -30,19 +30,7 @@ func StartServer() {
 		// `strict: true` sets the TLS configuration to something SSLLabs prefers
 		// @see https://gist.github.com/denji/12b3a568f092ab951456
 		if userDefinedTlsConfiguration.IsStrict {
-			tlsServerConfig = &tls.Config{
-				MinVersion:       tls.VersionTLS12,
-				CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-				// only AEAD ciphers with forward secrecy; this list applies to TLS 1.2, TLS 1.3 suites are always secure
-				CipherSuites: []uint16{
-					tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-					tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-					tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-					tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-					tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-					tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				},
-			}
+			tlsServerConfig = strictTLSConfig()
 		}
 
 		// provide an empty hashmap to disable any other TLS ciphers
@@ -69,5 +57,22 @@ func StartServer() {
 	} else {
 		// if no TLS configuration is present, work in unencrypted mode
 		log.Error(srv.ListenAndServe())
+	}
+}
+
+// strictTLSConfig is used for `strict: true`. The key exchanges are left to Go's defaults,
+// which prefer the post-quantum hybrid X25519MLKEM768 and still offer X25519 and the NIST curves.
+func strictTLSConfig() *tls.Config {
+	return &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		// only AEAD ciphers with forward secrecy; this list applies to TLS 1.2, TLS 1.3 suites are always secure
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
 	}
 }

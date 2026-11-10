@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -382,6 +383,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	const paramRegion = "region"
 	const paramForcePathStyle = "force_path_style"
 	const paramTLSSkipVerify = "tls_skip_verify"
+	const paramProxy = "proxy"
 	const paramAccessKeyId = "access_key_id"
 	const paramSecretAccessKey = "secret_access_key"
 	const assumeRoleArn = "assume_role_arn"
@@ -420,6 +422,15 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			tlsSkipVerify = s3Cfg.Bool(paramTLSSkipVerify)
 		}
 
+		proxy := s3Cfg.String(paramProxy)
+		if proxy != "" {
+			// fail early: a typo here would otherwise only show up as failing S3 requests
+			proxyURL, err := url.Parse(proxy)
+			if err != nil || proxyURL.Scheme == "" || proxyURL.Host == "" {
+				return nil, fmt.Errorf("parameter 'proxy' of environment %s is not a valid URL like http://proxy:3128", envName)
+			}
+		}
+
 		autoDiscoverDisks := true
 		var disks = ParseDisksSection(cfg.Sub("disks"))
 
@@ -432,6 +443,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			Region:            region,
 			ForcePathStyle:    forcePathStyle,
 			TLSSkipVerify:     tlsSkipVerify,
+			Proxy:             proxy,
 			AccessKey:         s3Cfg.String(paramAccessKeyId),
 			SecretKey:         s3Cfg.String(paramSecretAccessKey),
 			AssumeRoleArn:     s3Cfg.String(assumeRoleArn),

@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -28,14 +30,16 @@ import (
 )
 
 type S3Client struct {
-	Name              string
-	AccessKey         string
-	SecretKey         string
-	AssumeRoleArn     string
-	Token             string
-	Region            string
-	Endpoint          string
-	TLSSkipVerify     bool
+	Name          string
+	AccessKey     string
+	SecretKey     string
+	AssumeRoleArn string
+	Token         string
+	Region        string
+	Endpoint      string
+	TLSSkipVerify bool
+	// Proxy is the URL of an HTTP proxy for all requests of this client; empty means the proxy of the process environment
+	Proxy             string
 	ForcePathStyle    bool
 	EnvName           string
 	s3Client          *s3.Client
@@ -59,13 +63,26 @@ func getClient(c *S3Client) (*s3.Client, error) {
 		return nil, errors.New("region not set")
 	}
 
+	httpClient, err := c.httpClient()
+
+	if err != nil {
+		return nil, err
+	}
+
+	loadOptions := []func(*config.LoadOptions) error{config.WithRegion(c.Region)}
+
+	if httpClient != nil {
+		// also applies to the STS requests made while resolving credentials
+		loadOptions = append(loadOptions, config.WithHTTPClient(httpClient))
+	}
+
 	var awscfg = aws.Config{}
 
 	if len(c.AccessKey) == 0 || len(c.SecretKey) == 0 {
 		log.Debug("No access key or secret key provided, trying to use AWS credentials.")
 
 		ctx := context.TODO()
-		autoConf, err := config.LoadDefaultConfig(ctx, config.WithRegion(c.Region))
+		autoConf, err := config.LoadDefaultConfig(ctx, loadOptions...)
 
 		if err != nil {
 			log.Errorf("unable to load SDK config, %v", err)
@@ -93,26 +110,24 @@ func getClient(c *S3Client) (*s3.Client, error) {
 		log.Infof("Trying to assume role %s", c.AssumeRoleArn)
 
 		stsClient := sts.NewFromConfig(awscfg)
-		assumeRoleCfg, err := config.LoadDefaultConfig(
-			context.TODO(), config.WithRegion(c.Region),
-			config.WithCredentialsProvider(aws.NewCredentialsCache(
-				stscreds.NewAssumeRoleProvider(
-					stsClient,
-					c.AssumeRoleArn,
-					func(options *stscreds.AssumeRoleOptions) {
-						hostname, err := os.Hostname()
+		assumeRoleOptions := append(loadOptions, config.WithCredentialsProvider(aws.NewCredentialsCache(
+			stscreds.NewAssumeRoleProvider(
+				stsClient,
+				c.AssumeRoleArn,
+				func(options *stscreds.AssumeRoleOptions) {
+					hostname, err := os.Hostname()
 
-						if err != nil {
-							log.Debugf("Unable to get hostname %v", err)
-							hostname = "unknown"
-						}
+					if err != nil {
+						log.Debugf("Unable to get hostname %v", err)
+						hostname = "unknown"
+					}
 
-						log.Infof("Setting RoleSessionName to '%s'", hostname)
-						options.RoleSessionName = hostname
-					},
-				)),
-			),
-		)
+					log.Infof("Setting RoleSessionName to '%s'", hostname)
+					options.RoleSessionName = hostname
+				},
+			)),
+		))
+		assumeRoleCfg, err := config.LoadDefaultConfig(context.TODO(), assumeRoleOptions...)
 
 		if err != nil {
 			log.Errorf("Failed to assume role: %v", err)
@@ -122,12 +137,7 @@ func getClient(c *S3Client) (*s3.Client, error) {
 		awscfg = assumeRoleCfg
 	}
 
-	if c.TLSSkipVerify {
-		tr := &http.Transport{
-			// explicit opt-in via `tls_skip_verify`, e.g. for MinIO with self-signed certificates
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // see above
-		}
-		httpClient := &http.Client{Transport: tr}
+	if httpClient != nil {
 		awscfg.HTTPClient = httpClient
 	}
 
@@ -152,6 +162,41 @@ func getClient(c *S3Client) (*s3.Client, error) {
 	})
 
 	return c.s3Client, nil
+}
+
+// httpClient returns a customized HTTP client, or nil if the default client of the SDK is sufficient
+func (c *S3Client) httpClient() (aws.HTTPClient, error) {
+	if !c.TLSSkipVerify && c.Proxy == "" {
+		return nil, nil
+	}
+
+	var proxyURL *url.URL
+
+	if c.Proxy != "" {
+		var err error
+		proxyURL, err = url.Parse(c.Proxy)
+
+		if err != nil || proxyURL.Host == "" {
+			return nil, fmt.Errorf("invalid proxy URL for environment %#q", c.EnvName)
+		}
+
+		log.Debugf("Using proxy %s for environment %#q", proxyURL.Redacted(), c.EnvName)
+	}
+
+	return awshttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
+		if proxyURL != nil {
+			tr.Proxy = http.ProxyURL(proxyURL)
+		}
+
+		if c.TLSSkipVerify {
+			if tr.TLSClientConfig == nil {
+				tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+			}
+
+			// explicit opt-in via `tls_skip_verify`, e.g. for MinIO with self-signed certificates
+			tr.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // see above
+		}
+	}), nil
 }
 
 // GetFileNames TODO: do something smart with unused parameter maxDepth

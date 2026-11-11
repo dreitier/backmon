@@ -56,7 +56,10 @@ func main() {
 	// #12: restore the terminal before printing the error. termbox.Close() clears the screen
 	// (https://github.com/nsf/termbox-go/issues/233), so a message printed earlier would be lost,
 	// and without Close() the console stays scrambled.
-	termbox.Close()
+	// termbox is only initialized in interactive mode; on Windows, Close() does not check that itself
+	if termbox.IsInit {
+		termbox.Close()
+	}
 	log.Fatalf("Webserver stopped: %v", err)
 }
 

@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -109,4 +111,50 @@ func TestS3Client_tlsSkipVerify_acceptsSelfSignedCertificate(t *testing.T) {
 			t.Error("expected the self-signed certificate to be rejected without tls_skip_verify")
 		}
 	}
+}
+
+// With static keys and assume_role_arn, the AssumeRole request to STS must also go through the proxy
+func TestS3Client_assumeRoleWithStaticKeys_usesProxy(t *testing.T) {
+	var mu sync.Mutex
+	var proxiedHosts []string
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		proxiedHosts = append(proxiedHosts, r.Host)
+		mu.Unlock()
+
+		http.Error(w, "test proxy", http.StatusBadGateway)
+	}))
+	defer proxy.Close()
+
+	c := &S3Client{
+		Proxy:          proxy.URL,
+		Region:         "eu-central-1",
+		AccessKey:      "key",
+		SecretKey:      "secret",
+		AssumeRoleArn:  "arn:aws:iam::123456789012:role/backmon",
+		ForcePathStyle: true,
+		Endpoint:       "http://s3.invalid",
+	}
+
+	client, err := getClient(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the request fails at the test proxy; only the first attempt matters, so don't wait for the SDK's retries
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, _ = client.ListBuckets(ctx, &s3.ListBucketsInput{})
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	for _, host := range proxiedHosts {
+		if strings.HasPrefix(host, "sts.") {
+			return
+		}
+	}
+
+	t.Errorf("the AssumeRole request to STS did not go through the proxy, the proxy saw %v", proxiedHosts)
 }

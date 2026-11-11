@@ -104,6 +104,11 @@ func getClient(c *S3Client) (*s3.Client, error) {
 	} else {
 		awscfg.Credentials = credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.Token)
 		awscfg.Region = c.Region
+
+		// set here already, so that the STS requests of assume_role_arn below use it as well
+		if httpClient != nil {
+			awscfg.HTTPClient = httpClient
+		}
 	}
 
 	if len(c.AssumeRoleArn) > 0 {
@@ -194,7 +199,7 @@ func (c *S3Client) httpClient() (aws.HTTPClient, error) {
 			}
 
 			// explicit opt-in via `tls_skip_verify`, e.g. for MinIO with self-signed certificates
-			tr.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // see above
+			tr.TLSClientConfig.InsecureSkipVerify = true
 		}
 	}), nil
 }

@@ -76,3 +76,32 @@ func TestDownload_unknownGroup_returnsError(t *testing.T) {
 		t.Errorf("expected known group to resolve, got client=%v file=%v err=%v", client, fileInfo, err)
 	}
 }
+
+type failingClient struct{ fakeClient }
+
+func (f *failingClient) GetDiskNames() ([]string, error) { return nil, errors.New("unavailable") }
+
+// Only meaningful with `go test -race`: the update loop rewrites the disks while the API reads them.
+func TestApiAccess_duringDiskUpdate_doesNotRace(t *testing.T) {
+	clients["test-env"] = &clientData{Client: &failingClient{}, Disks: map[string]*DiskData{}}
+	t.Cleanup(func() { delete(clients, "test-env") })
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for i := 0; i < 200; i++ {
+			UpdateDiskInfo()
+		}
+	}()
+
+	for i := 0; i < 200; i++ {
+		GetDisks()
+		GetDefinition("disk")
+		GetFilenames("disk", "dir", "file")
+		_, _, _, _ = Download("disk", "dir", "file", "group")
+	}
+
+	<-done
+}

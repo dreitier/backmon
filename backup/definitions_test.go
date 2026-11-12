@@ -54,6 +54,36 @@ func Test_parseRawDefinitions(t *testing.T) {
 	assertion.Equal(7*24*time.Hour, dirs["backups"].Files["dump-%Y%M%D.sql"].RetentionAge)
 }
 
+func Test_parseRawDefinitions_defaultsWithoutSchedule_appliesRetentionToFiles(t *testing.T) {
+	assertion := assert.New(t)
+
+	yaml := `
+directories:
+  './databases/{{client}}':
+    defaults:
+      retention-count: 10
+      retention-age: 7d
+    files:
+      dump-%Y%M%D.sql:
+        alias: pgdump
+        schedule: 0 1 * * *
+`
+	defs, err := ParseRawDefinitions(strings.NewReader(yaml))
+
+	if err != nil {
+		t.Fatalf("expected defaults without a schedule to parse successfully, got: %s", err)
+	}
+
+	dir := defs.directories["./databases/{{client}}"]
+	assertion.Nil(dir.Defaults.Schedule)
+	assertion.Equal(uint64(10), dir.Defaults.RetentionCount)
+	assertion.Equal(7*24*time.Hour, dir.Defaults.RetentionAge)
+
+	file := dir.Files["dump-%Y%M%D.sql"]
+	assertion.Equal(uint64(10), file.RetentionCount)
+	assertion.Equal(7*24*time.Hour, file.RetentionAge)
+}
+
 func Test_parseDefinitions(t *testing.T) {
 	assertion := assert.New(t)
 	definitionsFile, err := os.Open("../_samples/1.postgres-dumps/backup_definitions.yaml")

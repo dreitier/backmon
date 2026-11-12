@@ -2,7 +2,7 @@
 
 # Builder runs on the host platform and cross-compiles for the target platform,
 # so multi-arch images don't need QEMU.
-FROM --platform=$BUILDPLATFORM golang:1.26@sha256:cfa27959837144bf4649802ba38e59daffd0dd2a7994aa83daaf113285b0f551 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26@sha256:978e0a4e3d953662577d784471db27742f543ab09eead06839a838188c73314b AS builder
 
 ARG TARGETOS
 ARG TARGETARCH

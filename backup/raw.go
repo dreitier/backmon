@@ -14,10 +14,12 @@ import (
 const (
 	keyDirectories = "directories"
 	keyQuotas      = "quota"
+	keyTimezone    = "timezone"
 )
 
 type RawDefinition struct {
 	quota       string
+	timezone    string
 	directories map[string]*RawDirectory
 }
 
@@ -70,6 +72,10 @@ func ParseRawDefinitions(definitionsReader io.Reader) (*RawDefinition, error) {
 
 	if cfg.Has(keyQuotas) {
 		parsed.quota = cfg.String(keyQuotas)
+	}
+
+	if cfg.Has(keyTimezone) {
+		parsed.timezone = cfg.String(keyTimezone)
 	}
 
 	return &parsed, nil

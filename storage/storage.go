@@ -330,6 +330,11 @@ func updateMetrics(client Client, disk *DiskData, root *fs.DirectoryInfo) {
 		return
 	}
 
+	// schedules are evaluated in the time zone of the definitions, if one is set
+	if disk.Definition.Location != nil {
+		now = now.In(disk.Definition.Location)
+	}
+
 	for iDir, dirDef := range disk.Definition.Directories {
 		log.Debugf("# %s", dirDef.Alias)
 		vars := make([]string, len(dirDef.Filter.Variables))

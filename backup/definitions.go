@@ -47,6 +47,15 @@ func ParseDefinition(definitionsReader io.Reader) (*Definition, error) {
 
 	var def Definition
 
+	if raw.timezone != "" {
+		// a wrong time zone would silently shift every expected backup time, so the definitions are rejected
+		def.Location, err = time.LoadLocation(raw.timezone)
+
+		if err != nil {
+			return nil, fmt.Errorf("invalid timezone %#q: %w", raw.timezone, err)
+		}
+	}
+
 	def.Quota, err = parseQuota(raw)
 
 	if err != nil {
@@ -567,7 +576,9 @@ func ParseFilePattern(pattern string) (*regexp.Regexp, error) {
 }
 
 type Definition struct {
-	Quota       uint64
+	Quota uint64
+	// Location is the time zone in which the schedules are evaluated; nil means the time zone of the backmon process
+	Location    *time.Location
 	Directories []*Directory
 }
 

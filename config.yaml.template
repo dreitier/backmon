@@ -33,6 +33,8 @@ environments:
     secret_access_key: MINIO_SECRET_ACCESS_KEY_1
     force_path_style: true
     endpoint: http://my-minio-endpoint:9000
+    # optional: HTTP proxy for all requests of this environment; without it, HTTP_PROXY/HTTPS_PROXY/NO_PROXY apply
+    proxy: http://my-proxy:3128
 
     local:
         path: /mnt/backup

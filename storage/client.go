@@ -28,6 +28,7 @@ func NewClient(config *config.ClientConfiguration) Client {
 			AssumeRoleArn:     config.AssumeRoleArn,
 			Endpoint:          config.Endpoint,
 			TLSSkipVerify:     config.TLSSkipVerify,
+			Proxy:             config.Proxy,
 			ForcePathStyle:    config.ForcePathStyle,
 			Token:             config.Token,
 			AutoDiscoverDisks: config.AutoDiscoverDisks,

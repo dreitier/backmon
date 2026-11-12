@@ -15,6 +15,7 @@ type ClientConfiguration struct {
 	AssumeRoleArn     string
 	Endpoint          string
 	TLSSkipVerify     bool
+	Proxy             string
 	ForcePathStyle    bool
 	Token             string
 	AutoDiscoverDisks bool

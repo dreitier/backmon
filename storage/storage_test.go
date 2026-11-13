@@ -70,10 +70,14 @@ func TestDownload_unknownGroup_returnsError(t *testing.T) {
 		t.Error("expected an error when downloading an unknown group")
 	}
 
-	client, fileInfo, err := findDownload("with-definitions", "dir", "file", "known-group")
+	client, diskName, fileInfo, err := findDownload("with-definitions", "dir", "file", "known-group")
 
 	if err != nil || client == nil || fileInfo == nil || fileInfo.Name != "dump.sql" {
 		t.Errorf("expected known group to resolve, got client=%v file=%v err=%v", client, fileInfo, err)
+	}
+
+	if diskName != "with-definitions" {
+		t.Errorf("expected the name of the known disk, got %q", diskName)
 	}
 }
 

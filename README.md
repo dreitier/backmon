@@ -54,8 +54,16 @@ We provide a Helm chart for *backmon* which you can easily install:
 ```
 $ helm repo add dreitier https://dreitier.github.io/helm-charts/
 $ helm repo update
-$ helm install dreitier/backmon
+$ helm install backmon dreitier/backmon
 ```
+
+The chart is also published as OCI artifact to the GitHub Container Registry; no `helm repo add` is needed (Helm 3.8+):
+
+```
+$ helm install backmon oci://ghcr.io/dreitier/charts/backmon
+```
+
+By default, the chart pulls the image from Docker Hub; set `image.repository=ghcr.io/dreitier/backmon` to use the GitHub Container Registry instead.
 
 ### Local installation
 
@@ -74,10 +82,16 @@ $ helm install dreitier/backmon
 Binaries for Linux, macOS and Windows (amd64 and arm64) are attached to each [GitHub release](https://github.com/dreitier/backmon/releases), together with `checksums.txt` and SBOMs.
 
 ### Docker container
-Multi-arch images (`linux/amd64`, `linux/arm64`) are published to [Docker Hub](https://hub.docker.com/r/dreitier/backmon) and GHCR:
+Multi-arch images (`linux/amd64`, `linux/arm64`) are published to two registries with the same content and tags:
+
+| Registry                                                                                 | Image                      |
+|------------------------------------------------------------------------------------------|----------------------------|
+| [Docker Hub](https://hub.docker.com/r/dreitier/backmon)                                  | `dreitier/backmon`         |
+| [GitHub Container Registry](https://github.com/dreitier/backmon/pkgs/container/backmon)  | `ghcr.io/dreitier/backmon` |
 
 ```bash
-docker pull dreitier/backmon:4        # or ghcr.io/dreitier/backmon:4
+docker pull dreitier/backmon:5
+docker pull ghcr.io/dreitier/backmon:5
 ```
 
 Tags: `x.y.z`, `x.y`, `x` and `latest`. Mount your configuration to `/etc/backmon/config.yaml`.
@@ -100,7 +114,7 @@ sha256sum --ignore-missing -c checksums.txt
 **Docker images** (Docker Hub and GHCR):
 
 ```bash
-cosign verify dreitier/backmon:4 \
+cosign verify ghcr.io/dreitier/backmon:5 \
   --certificate-identity "https://github.com/dreitier/backmon/.github/workflows/release.yml@refs/heads/main" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -108,8 +122,8 @@ cosign verify dreitier/backmon:4 \
 In addition, binaries, SBOMs and images come with [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations) (SLSA), which also show the commit and workflow run they were built from:
 
 ```bash
-gh attestation verify backmon_4.0.4_linux_amd64.tar.gz --owner dreitier
-gh attestation verify oci://ghcr.io/dreitier/backmon:4.0.4 --owner dreitier
+gh attestation verify backmon_5.0.1_linux_amd64.tar.gz --owner dreitier
+gh attestation verify oci://ghcr.io/dreitier/backmon:5.0.1 --owner dreitier
 ```
 
 ## Development

@@ -1,4 +1,5 @@
-# Local checks before each commit, mirroring the CI lint job.
+# Local checks before each commit. The CI lint job runs the same hooks (pre-commit version:
+# .github/requirements-ci.txt); the golangci-lint hooks are skipped there in favour of golangci-lint-action.
 # Setup (once per clone): `pre-commit install` (Fedora: `sudo dnf install pre-commit`)
 # Run manually on all files: `pre-commit run --all-files`
 repos:
@@ -12,7 +13,7 @@ repos:
       - id: golangci-lint
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12 # also used by the CI lint job
+    rev: v1.7.12
     hooks:
       - id: actionlint
 

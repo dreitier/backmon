@@ -35,23 +35,19 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # single source of truth for the linter versions: .pre-commit-config.yaml (updated by Dependabot)
-      - name: Read linter versions from .pre-commit-config.yaml
+      # single source of truth for the golangci-lint version: .pre-commit-config.yaml (updated by Dependabot)
+      - name: Read golangci-lint version from .pre-commit-config.yaml
         id: versions
         run: |
           rev_of() {
             awk -v repo="repo: $1" 'index($0, repo) { found = 1; next } found && $1 == "rev:" { print $2; exit }' .pre-commit-config.yaml
           }
           golangci_lint=$(rev_of https://github.com/golangci/golangci-lint)
-          actionlint=$(rev_of https://github.com/rhysd/actionlint)
-          if [ -z "$golangci_lint" ] || [ -z "$actionlint" ]; then
-            echo "::error file=.pre-commit-config.yaml::could not read the golangci-lint/actionlint versions"
+          if [ -z "$golangci_lint" ]; then
+            echo "::error file=.pre-commit-config.yaml::could not read the golangci-lint version"
             exit 1
           fi
-          {
-            echo "golangci-lint=${golangci_lint}"
-            echo "actionlint=${actionlint#v}"
-          } >> "$GITHUB_OUTPUT"
+          echo "golangci-lint=${golangci_lint}" >> "$GITHUB_OUTPUT"
 
       - name: Check go.mod / go.sum are tidy
         run: |
@@ -63,11 +59,25 @@ jobs:
         with:
           version: ${{ steps.versions.outputs.golangci-lint }}
 
-      - name: Lint GitHub Actions workflows
+      # pre-commit version: .github/requirements-ci.txt (Dependabot)
+      - name: Install pre-commit
+        if: ${{ !cancelled() }}
+        run: pipx install "$(grep -E '^pre-commit==' .github/requirements-ci.txt)"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: ${{ !cancelled() }}
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # The hooks of .pre-commit-config.yaml (actionlint, file checks), exactly as locally. Also fails if a
+      # hook revision doesn't exist (e.g. a broken Dependabot update): every hook repository is cloned,
+      # skipped hooks included. The golangci-lint hooks are skipped, golangci-lint-action above runs them.
+      - name: pre-commit
         if: ${{ !cancelled() }}
         env:
-          ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo "rhysd/actionlint:${ACTIONLINT_VERSION}" -color
+          SKIP: golangci-lint-config-verify,golangci-lint-fmt,golangci-lint
+        run: pre-commit run --all-files --show-diff-on-failure --color=always
 
       - name: Lint Dockerfile
         if: ${{ !cancelled() }}

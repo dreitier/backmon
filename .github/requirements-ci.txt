@@ -1,0 +1,2 @@
+# Python tools of the CI lint job (installed with pipx); updated by Dependabot
+pre-commit==4.7.0

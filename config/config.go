@@ -391,7 +391,7 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 	const paramToken = "token"
 	const paramAutoDiscoverDisks = "auto_discover_disks"
 
-	// check if local env oder S3 env
+	// check if local, S3 or Google Cloud Storage environment
 	if cfg.Has("path") {
 		path := cfg.String("path")
 		if path == "" {
@@ -423,12 +423,8 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		}
 
 		proxy := s3Cfg.String(paramProxy)
-		if proxy != "" {
-			// fail early: a typo here would otherwise only show up as failing S3 requests
-			proxyURL, err := url.Parse(proxy)
-			if err != nil || proxyURL.Scheme == "" || proxyURL.Host == "" {
-				return nil, fmt.Errorf("parameter 'proxy' of environment %s is not a valid URL like http://proxy:3128", envName)
-			}
+		if err := validateProxy(proxy, envName); err != nil {
+			return nil, err
 		}
 
 		autoDiscoverDisks := true
@@ -452,6 +448,14 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 			AutoDiscoverDisks: autoDiscoverDisks,
 			Disks:             disks,
 		}
+	} else if cfg.Has("gcs") {
+		var err error
+		c, err = parseGCSSection(cfg.Sub("gcs"), envName)
+		if err != nil {
+			return nil, err
+		}
+
+		c.Disks = ParseDisksSection(cfg.Sub("disks"))
 	} else {
 		return nil, fmt.Errorf("no supported storage configuration found for environment %s", envName)
 	}
@@ -465,5 +469,71 @@ func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration
 		Name:        envName,
 		Client:      c,
 		Definitions: definitions,
+	}, nil
+}
+
+// validateProxy fails early: a typo in `proxy` would otherwise only show up as failing storage requests
+func validateProxy(proxy string, envName string) error {
+	if proxy == "" {
+		return nil
+	}
+
+	proxyURL, err := url.Parse(proxy)
+	if err != nil || proxyURL.Scheme == "" || proxyURL.Host == "" {
+		return fmt.Errorf("parameter 'proxy' of environment %s is not a valid URL like http://proxy:3128", envName)
+	}
+
+	return nil
+}
+
+// parseGCSSection parses the `gcs:` section of an environment (Google Cloud Storage)
+func parseGCSSection(gcsCfg Raw, envName string) (*ClientConfiguration, error) {
+	const paramProjectID = "project_id"
+	const paramCredentialsFile = "credentials_file"
+	const paramCredentialsJSON = "credentials_json"
+	const paramAnonymous = "anonymous"
+	const paramEndpoint = "endpoint"
+	const paramProxy = "proxy"
+	const paramAutoDiscoverDisks = "auto_discover_disks"
+
+	gcs := &GCSConfiguration{
+		ProjectID:       gcsCfg.String(paramProjectID),
+		CredentialsFile: gcsCfg.String(paramCredentialsFile),
+		CredentialsJSON: gcsCfg.String(paramCredentialsJSON),
+		Anonymous:       gcsCfg.Bool(paramAnonymous),
+	}
+
+	if gcs.CredentialsFile != "" && gcs.CredentialsJSON != "" {
+		return nil, fmt.Errorf("parameters 'credentials_file' and 'credentials_json' of environment %s are mutually exclusive", envName)
+	}
+
+	if gcs.Anonymous && (gcs.CredentialsFile != "" || gcs.CredentialsJSON != "") {
+		return nil, fmt.Errorf("parameter 'anonymous' of environment %s can't be combined with credentials", envName)
+	}
+
+	endpoint := gcsCfg.String(paramEndpoint)
+	if endpoint != "" {
+		endpointURL, err := url.Parse(endpoint)
+		if err != nil || (endpointURL.Scheme != "http" && endpointURL.Scheme != "https") || endpointURL.Host == "" {
+			return nil, fmt.Errorf("parameter 'endpoint' of environment %s is not a valid URL like https://storage.googleapis.com", envName)
+		}
+	}
+
+	proxy := gcsCfg.String(paramProxy)
+	if err := validateProxy(proxy, envName); err != nil {
+		return nil, err
+	}
+
+	autoDiscoverDisks := true
+	if gcsCfg.Has(paramAutoDiscoverDisks) {
+		autoDiscoverDisks = gcsCfg.Bool(paramAutoDiscoverDisks)
+	}
+
+	return &ClientConfiguration{
+		EnvName:           envName,
+		Endpoint:          endpoint,
+		Proxy:             proxy,
+		AutoDiscoverDisks: autoDiscoverDisks,
+		GCS:               gcs,
 	}, nil
 }

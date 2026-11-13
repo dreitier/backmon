@@ -15,7 +15,13 @@ downloads:
   enabled: false
 
 environments:
+  # AWS S3: each bucket is a disk
   aws-test-environment:
+    s3:
+      access_key_id: AWS_ACCESS_KEY_1
+      secret_access_key: AWS_SECRET_ACCESS_KEY_1
+      region: eu-central-1
+      auto_discover_disks: true
     disks:
       include:
         - my-bucket-1
@@ -23,18 +29,35 @@ environments:
         - my-secret-bucket-2
         - "/allbucketswith-.*-regex/"
       all_others: exclude
-    access_key_id: AWS_ACCESS_KEY_1
-    secret_access_key: AWS_SECRET_ACCESS_KEY_1
-    region: eu-central-1
-    auto_discover_disks: true
 
+  # S3-compatible object storage like MinIO
   local-minio-environment:
-    access_key_id: MINIO_ACCESS_KEY_1
-    secret_access_key: MINIO_SECRET_ACCESS_KEY_1
-    force_path_style: true
-    endpoint: http://my-minio-endpoint:9000
-    # optional: HTTP proxy for all requests of this environment; without it, HTTP_PROXY/HTTPS_PROXY/NO_PROXY apply
-    proxy: http://my-proxy:3128
+    s3:
+      access_key_id: MINIO_ACCESS_KEY_1
+      secret_access_key: MINIO_SECRET_ACCESS_KEY_1
+      force_path_style: true
+      endpoint: http://my-minio-endpoint:9000
+      # optional: HTTP proxy for all requests of this environment; without it, HTTP_PROXY/HTTPS_PROXY/NO_PROXY apply
+      proxy: http://my-proxy:3128
 
-    local:
-        path: /mnt/backup
+  # Google Cloud Storage: each bucket is a disk
+  gcs-environment:
+    gcs:
+      # project whose buckets are discovered; defaults to the project of the credentials
+      project_id: my-gcp-project
+      # optional: service account key file. Without credentials_file and credentials_json, Application Default
+      # Credentials are used (GOOGLE_APPLICATION_CREDENTIALS, Workload Identity, metadata server of GCE/GKE)
+      credentials_file: /etc/backmon/gcs-service-account.json
+      # optional: the content of the key file instead of its path, e.g. from an environment variable
+      # credentials_json: __${GCS_SERVICE_ACCOUNT_KEY}__
+      # optional: without bucket discovery (permission storage.buckets.list), only the buckets of disks.include are used
+      auto_discover_disks: true
+      # optional: HTTP proxy for all requests of this environment; without it, HTTP_PROXY/HTTPS_PROXY/NO_PROXY apply
+      # proxy: http://my-proxy:3128
+    disks:
+      exclude:
+        - my-secret-bucket-3
+
+  # local filesystem
+  local-environment:
+    path: /mnt/backup

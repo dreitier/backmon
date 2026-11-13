@@ -3,17 +3,37 @@
 [![CI](https://github.com/dreitier/backmon/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dreitier/backmon/actions/workflows/release.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dreitier/backmon/badge)](https://scorecard.dev/viewer/?uri=github.com/dreitier/backmon)
 
-*backmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
+*backmon* monitors backup files inside a filesystem, an S3-compatible object storage like AWS S3 or MinIO, or Google Cloud Storage.
 
 ## Description
 
-With *backmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored either in a local filesystem or inside an S3-compatible object storage like AWS S3 or MinIO.
+With *backmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored in a local filesystem, inside an S3-compatible object storage like AWS S3 or MinIO, or in Google Cloud Storage buckets.
 
 You can easily integrate *backmon* into your Prometheus- and Grafana-based infrastructure for analysing the duration of creating backups or alerting if a backup fails some constraints.
 
 ## Getting started
 ### Documentation
 You can find our official documentation at [https://dreitier.github.io/backmon-docs](https://dreitier.github.io/backmon-docs).
+
+### Storage
+Each environment of the `config.yaml` uses one storage; see [`config.yaml.template`](config.yaml.template) for a complete example.
+
+| Storage                                 | Section | Disks                                 |
+|-----------------------------------------|---------|---------------------------------------|
+| Local filesystem                        | `path`  | the configured directory              |
+| AWS S3, MinIO and other S3-compatibles  | `s3`    | each bucket                           |
+| Google Cloud Storage                    | `gcs`   | each bucket of the configured project |
+
+```yaml
+environments:
+  gcs-backups:
+    gcs:
+      project_id: my-gcp-project
+      # optional; without it, Application Default Credentials are used (e.g. Workload Identity on GKE)
+      credentials_file: /etc/backmon/gcs-service-account.json
+```
+
+For Google Cloud Storage, *backmon* needs the permissions `storage.buckets.list` (in the project, for `auto_discover_disks`), `storage.objects.list` and `storage.objects.get`, and `storage.objects.delete` if backups are purged.
 
 ### Dependencies
 During build time, *backmon* requires Go 1.26 or later.
@@ -110,11 +130,12 @@ To try the GoReleaser build locally, run `make snapshot`.
 ### Running tests
 
 ```bash
-make test       # unit tests; S3 integration tests are skipped
+make test       # unit tests; S3 integration tests are skipped, GCS tests use an in-memory fake
 make test-s3    # S3 integration tests against S3Mock (requires Docker)
+make test-gcs   # GCS integration tests against fake-gcs-server (requires Docker)
 ```
 
-The S3 integration tests in `storage/provider/s3_integration_test.go` run against any S3-compatible server given in `BACKMON_TEST_S3_ENDPOINT` (e.g. `http://localhost:9090`). CI runs all tests and comments on each pull request with its test coverage compared to `main`.
+The S3 integration tests in `storage/provider/s3_integration_test.go` run against any S3-compatible server given in `BACKMON_TEST_S3_ENDPOINT` (e.g. `http://localhost:9090`). The Google Cloud Storage tests in `storage/provider/gcs_integration_test.go` run against the server given in `BACKMON_TEST_GCS_ENDPOINT` (e.g. `http://localhost:4443`), which has to implement the Cloud Storage JSON API like [fake-gcs-server](https://github.com/fsouza/fake-gcs-server); without it, they use an in-memory fake. CI runs all tests and comments on each pull request with its test coverage compared to `main`.
 
 ### Base images
 

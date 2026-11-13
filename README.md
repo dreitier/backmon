@@ -3,17 +3,37 @@
 [![CI](https://github.com/dreitier/backmon/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dreitier/backmon/actions/workflows/release.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dreitier/backmon/badge)](https://scorecard.dev/viewer/?uri=github.com/dreitier/backmon)
 
-*backmon* monitors backup files inside a filesystem, or an S3-compatible object storage like AWS S3 or MinIO.
+*backmon* monitors backup files inside a filesystem, an S3-compatible object storage like AWS S3 or MinIO, or Google Cloud Storage.
 
 ## Description
 
-With *backmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored either in a local filesystem or inside an S3-compatible object storage like AWS S3 or MinIO.
+With *backmon* you can monitor and check the presence, size and timestamps of your recurring backup files. Your backup files can be stored in a local filesystem, inside an S3-compatible object storage like AWS S3 or MinIO, or in Google Cloud Storage buckets.
 
 You can easily integrate *backmon* into your Prometheus- and Grafana-based infrastructure for analysing the duration of creating backups or alerting if a backup fails some constraints.
 
 ## Getting started
 ### Documentation
 You can find our official documentation at [https://dreitier.github.io/backmon-docs](https://dreitier.github.io/backmon-docs).
+
+### Storage
+Each environment of the `config.yaml` uses one storage; see [`config.yaml.template`](config.yaml.template) for a complete example.
+
+| Storage                                 | Section | Disks                                 |
+|-----------------------------------------|---------|---------------------------------------|
+| Local filesystem                        | `path`  | the configured directory              |
+| AWS S3, MinIO and other S3-compatibles  | `s3`    | each bucket                           |
+| Google Cloud Storage                    | `gcs`   | each bucket of the configured project |
+
+```yaml
+environments:
+  gcs-backups:
+    gcs:
+      project_id: my-gcp-project
+      # optional; without it, Application Default Credentials are used (e.g. Workload Identity on GKE)
+      credentials_file: /etc/backmon/gcs-service-account.json
+```
+
+For Google Cloud Storage, *backmon* needs the permissions `storage.buckets.list` (in the project, for `auto_discover_disks`), `storage.objects.list` and `storage.objects.get`, and `storage.objects.delete` if backups are purged.
 
 ### Dependencies
 During build time, *backmon* requires Go 1.26 or later.
@@ -34,8 +54,16 @@ We provide a Helm chart for *backmon* which you can easily install:
 ```
 $ helm repo add dreitier https://dreitier.github.io/helm-charts/
 $ helm repo update
-$ helm install dreitier/backmon
+$ helm install backmon dreitier/backmon
 ```
+
+The chart is also published as OCI artifact to the GitHub Container Registry; no `helm repo add` is needed (Helm 3.8+):
+
+```
+$ helm install backmon oci://ghcr.io/dreitier/charts/backmon
+```
+
+By default, the chart pulls the image from Docker Hub; set `image.repository=ghcr.io/dreitier/backmon` to use the GitHub Container Registry instead.
 
 ### Local installation
 
@@ -54,10 +82,16 @@ $ helm install dreitier/backmon
 Binaries for Linux, macOS and Windows (amd64 and arm64) are attached to each [GitHub release](https://github.com/dreitier/backmon/releases), together with `checksums.txt` and SBOMs.
 
 ### Docker container
-Multi-arch images (`linux/amd64`, `linux/arm64`) are published to [Docker Hub](https://hub.docker.com/r/dreitier/backmon) and GHCR:
+Multi-arch images (`linux/amd64`, `linux/arm64`) are published to two registries with the same content and tags:
+
+| Registry                                                                                 | Image                      |
+|------------------------------------------------------------------------------------------|----------------------------|
+| [Docker Hub](https://hub.docker.com/r/dreitier/backmon)                                  | `dreitier/backmon`         |
+| [GitHub Container Registry](https://github.com/dreitier/backmon/pkgs/container/backmon)  | `ghcr.io/dreitier/backmon` |
 
 ```bash
-docker pull dreitier/backmon:4        # or ghcr.io/dreitier/backmon:4
+docker pull dreitier/backmon:5
+docker pull ghcr.io/dreitier/backmon:5
 ```
 
 Tags: `x.y.z`, `x.y`, `x` and `latest`. Mount your configuration to `/etc/backmon/config.yaml`.
@@ -80,7 +114,7 @@ sha256sum --ignore-missing -c checksums.txt
 **Docker images** (Docker Hub and GHCR):
 
 ```bash
-cosign verify dreitier/backmon:4 \
+cosign verify ghcr.io/dreitier/backmon:5 \
   --certificate-identity "https://github.com/dreitier/backmon/.github/workflows/release.yml@refs/heads/main" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -88,8 +122,8 @@ cosign verify dreitier/backmon:4 \
 In addition, binaries, SBOMs and images come with [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations) (SLSA), which also show the commit and workflow run they were built from:
 
 ```bash
-gh attestation verify backmon_4.0.4_linux_amd64.tar.gz --owner dreitier
-gh attestation verify oci://ghcr.io/dreitier/backmon:4.0.4 --owner dreitier
+gh attestation verify backmon_5.0.1_linux_amd64.tar.gz --owner dreitier
+gh attestation verify oci://ghcr.io/dreitier/backmon:5.0.1 --owner dreitier
 ```
 
 ## Development
@@ -110,11 +144,12 @@ To try the GoReleaser build locally, run `make snapshot`.
 ### Running tests
 
 ```bash
-make test       # unit tests; S3 integration tests are skipped
+make test       # unit tests; S3 integration tests are skipped, GCS tests use an in-memory fake
 make test-s3    # S3 integration tests against S3Mock (requires Docker)
+make test-gcs   # GCS integration tests against fake-gcs-server (requires Docker)
 ```
 
-The S3 integration tests in `storage/provider/s3_integration_test.go` run against any S3-compatible server given in `BACKMON_TEST_S3_ENDPOINT` (e.g. `http://localhost:9090`). CI runs all tests and comments on each pull request with its test coverage compared to `main`.
+The S3 integration tests in `storage/provider/s3_integration_test.go` run against any S3-compatible server given in `BACKMON_TEST_S3_ENDPOINT` (e.g. `http://localhost:9090`). The Google Cloud Storage tests in `storage/provider/gcs_integration_test.go` run against the server given in `BACKMON_TEST_GCS_ENDPOINT` (e.g. `http://localhost:4443`), which has to implement the Cloud Storage JSON API like [fake-gcs-server](https://github.com/fsouza/fake-gcs-server); without it, they use an in-memory fake. CI runs all tests and comments on each pull request with its test coverage compared to `main`.
 
 ### Base images
 

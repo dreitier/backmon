@@ -8,8 +8,10 @@ GIT_TAG ?= $(shell git tag --points-at HEAD)
 TAG ?= latest
 # S3-compatible server for the S3 integration tests (same image as in .github/workflows/ci.yml)
 S3MOCK_IMAGE ?= adobe/s3mock:5.2.3
+# Google Cloud Storage emulator for the GCS integration tests (same image as in .github/workflows/ci.yml)
+FAKE_GCS_IMAGE ?= fsouza/fake-gcs-server:1.56.1
 
-.PHONY: all test test-s3 fmt lint hooks build snapshot clean docker-build pin-images
+.PHONY: all test test-s3 test-gcs fmt lint hooks build snapshot clean docker-build pin-images
 
 all: build
 
@@ -22,6 +24,13 @@ test-s3:
 	curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null http://localhost:9090/ ; \
 	BACKMON_TEST_S3_ENDPOINT=http://localhost:9090 go test -race -count=1 -v -run S3 ./storage/provider/ ; \
 	status=$$? ; docker stop backmon-s3mock > /dev/null ; exit $$status
+
+# runs the GCS tests as integration tests against fake-gcs-server in Docker
+test-gcs:
+	docker run -d --rm --name backmon-fake-gcs -p 4443:4443 $(FAKE_GCS_IMAGE) -scheme http -backend memory > /dev/null
+	curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null "http://localhost:4443/storage/v1/b?project=backmon-test" ; \
+	BACKMON_TEST_GCS_ENDPOINT=http://localhost:4443 go test -race -count=1 -v -run GCS ./storage/provider/ ; \
+	status=$$? ; docker stop backmon-fake-gcs > /dev/null ; exit $$status
 
 fmt:
 	golangci-lint fmt

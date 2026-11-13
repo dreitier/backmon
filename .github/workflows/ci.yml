@@ -102,6 +102,10 @@ jobs:
           - 9090:9090
     env:
       BACKMON_TEST_S3_ENDPOINT: http://localhost:9090
+      BACKMON_TEST_GCS_ENDPOINT: http://localhost:4443
+      # Google Cloud Storage emulator for the integration tests in storage/provider/gcs_integration_test.go
+      # (same image as in the Makefile); no service container, as those can't be started with arguments
+      FAKE_GCS_IMAGE: fsouza/fake-gcs-server:1.56.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -114,6 +118,11 @@ jobs:
 
       - name: Wait for the S3 test server
         run: curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null "$BACKMON_TEST_S3_ENDPOINT"
+
+      - name: Start the GCS test server
+        run: |
+          docker run -d --name fake-gcs -p 4443:4443 "$FAKE_GCS_IMAGE" -scheme http -backend memory
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null "$BACKMON_TEST_GCS_ENDPOINT/storage/v1/b?project=backmon-test"
 
       - name: Run tests
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...

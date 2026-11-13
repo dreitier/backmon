@@ -74,3 +74,50 @@ func TestNewClientReturnsS3ClientWhenDirectoryEmpty(t *testing.T) {
 		t.Errorf("Token = %q", s3c.Token)
 	}
 }
+
+// With a GCS section, NewClient must produce a Google Cloud Storage provider and pass its configuration through.
+func TestNewClientReturnsGCSClientWhenGCSConfigured(t *testing.T) {
+	disks := &config.DisksConfiguration{}
+	cfg := &config.ClientConfiguration{
+		EnvName:           "gcs-env",
+		Endpoint:          "http://localhost:4443",
+		Proxy:             "http://proxy:3128",
+		AutoDiscoverDisks: true,
+		Disks:             disks,
+		GCS: &config.GCSConfiguration{
+			ProjectID:       "my-project",
+			CredentialsFile: "/etc/backmon/key.json",
+			CredentialsJSON: "{}",
+			Anonymous:       true,
+		},
+	}
+
+	client := NewClient(cfg)
+
+	gcs, ok := client.(*provider.GCSClient)
+	if !ok {
+		t.Fatalf("expected *provider.GCSClient, got %T", client)
+	}
+
+	if gcs.EnvName != "gcs-env" {
+		t.Errorf("EnvName = %q, want %q", gcs.EnvName, "gcs-env")
+	}
+	if gcs.ProjectID != "my-project" {
+		t.Errorf("ProjectID = %q", gcs.ProjectID)
+	}
+	if gcs.CredentialsFile != "/etc/backmon/key.json" || gcs.CredentialsJSON != "{}" {
+		t.Errorf("credentials not propagated: %q / %q", gcs.CredentialsFile, gcs.CredentialsJSON)
+	}
+	if gcs.Endpoint != "http://localhost:4443" {
+		t.Errorf("Endpoint = %q", gcs.Endpoint)
+	}
+	if gcs.Proxy != "http://proxy:3128" {
+		t.Errorf("Proxy = %q", gcs.Proxy)
+	}
+	if !gcs.Anonymous || !gcs.AutoDiscoverDisks {
+		t.Errorf("boolean flags not propagated: %+v", gcs)
+	}
+	if gcs.Disks != disks {
+		t.Error("Disks not propagated")
+	}
+}

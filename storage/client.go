@@ -19,6 +19,20 @@ type Client interface {
 }
 
 func NewClient(config *config.ClientConfiguration) Client {
+	if config.GCS != nil {
+		return &provider.GCSClient{
+			EnvName:           config.EnvName,
+			ProjectID:         config.GCS.ProjectID,
+			CredentialsFile:   config.GCS.CredentialsFile,
+			CredentialsJSON:   config.GCS.CredentialsJSON,
+			Anonymous:         config.GCS.Anonymous,
+			Endpoint:          config.Endpoint,
+			Proxy:             config.Proxy,
+			AutoDiscoverDisks: config.AutoDiscoverDisks,
+			Disks:             config.Disks,
+		}
+	}
+
 	if config.Directory == "" {
 		return &provider.S3Client{
 			EnvName:           config.EnvName,

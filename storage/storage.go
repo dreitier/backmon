@@ -686,44 +686,46 @@ func Download(
 	fileName string,
 	groupName string,
 ) (bytes io.ReadCloser, length int64, contentType string, err error) {
-	client, fileInfo, err := findDownload(diskName, directoryName, fileName, groupName)
+	client, disk, fileInfo, err := findDownload(diskName, directoryName, fileName, groupName)
 
 	if err != nil {
 		return nil, -1, "", err
 	}
 
 	// the lock is not held while streaming, so that long-running downloads don't block disk updates
-	return client.Download(diskName, fileInfo)
+	return client.Download(disk, fileInfo)
 }
 
+// findDownload returns the client, the name of the disk and the file to download. diskName is part of the request
+// URL: providers only get the name of the disk as it has been discovered, never the value of the request itself.
 func findDownload(
 	diskName string,
 	directoryName string,
 	fileName string,
 	groupName string,
-) (Client, *fs.FileInfo, error) {
+) (Client, string, *fs.FileInfo, error) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
 	groups, file := findGroups(diskName, directoryName, fileName)
 
 	if groups == nil {
-		return nil, nil, fmt.Errorf("file %#q in directory %#q of disk %#q does not exist", fileName, directoryName, diskName)
+		return nil, "", nil, fmt.Errorf("file %#q in directory %#q of disk %#q does not exist", fileName, directoryName, diskName)
 	}
 
 	files, exists := groups[groupName]
 
 	if !exists || file >= len(files) || files[file] == nil {
-		return nil, nil, fmt.Errorf("group %#q of file %#q does not exist", groupName, fileName)
+		return nil, "", nil, fmt.Errorf("group %#q of file %#q does not exist", groupName, fileName)
 	}
 
 	for _, client := range clients {
-		if _, found := client.Disks[diskName]; found {
-			return client.Client, files[file], nil
+		if disk, found := client.Disks[diskName]; found && disk != nil {
+			return client.Client, disk.Name, files[file], nil
 		}
 	}
 
-	return nil, nil, fmt.Errorf("no client found for disk %#q", diskName)
+	return nil, "", nil, fmt.Errorf("no client found for disk %#q", diskName)
 }
 
 func findGroups(

@@ -14,7 +14,8 @@ import (
 	"github.com/dreitier/backmon/storage"
 )
 
-func GetDisks(w http.ResponseWriter) {
+func GetDisks(w http.ResponseWriter, r *http.Request) {
+	hrefs := newLinkBuilder(r)
 	disks := storage.GetDisks()
 	names := make([]string, 0, len(disks))
 
@@ -25,15 +26,17 @@ func GetDisks(w http.ResponseWriter) {
 	sort.Strings(names)
 
 	writeData(w, rootResource{
-		Links:    links{relSelf: linkTo()},
-		Embedded: embedded{relDisks: embed(names)},
+		Links:    links{relSelf: hrefs.to()},
+		Embedded: embedded{relDisks: hrefs.embed(names)},
 	})
 }
 
 func GetDirectories(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 ) {
+	hrefs := newLinkBuilder(r)
 	definition := findDefinition(w, diskName)
 	if definition == nil {
 		return
@@ -49,10 +52,10 @@ func GetDirectories(
 		Name:  diskName,
 		Quota: definition.Quota,
 		Links: links{
-			relSelf: linkTo(diskName),
-			relUp:   linkTo(),
+			relSelf: hrefs.to(diskName),
+			relUp:   hrefs.to(),
 		},
-		Embedded: embedded{relDirectories: embed(names, diskName)},
+		Embedded: embedded{relDirectories: hrefs.embed(names, diskName)},
 	}
 
 	if definition.Location != nil {
@@ -64,9 +67,11 @@ func GetDirectories(
 
 func GetFiles(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 	directoryName string,
 ) {
+	hrefs := newLinkBuilder(r)
 	dir := findDirectory(w, diskName, directoryName)
 	if dir == nil {
 		return
@@ -81,15 +86,16 @@ func GetFiles(
 	writeData(w, namedResource{
 		Name: directoryName,
 		Links: links{
-			relSelf: linkTo(diskName, directoryName),
-			relUp:   linkTo(diskName),
+			relSelf: hrefs.to(diskName, directoryName),
+			relUp:   hrefs.to(diskName),
 		},
-		Embedded: embedded{relFiles: embed(names, diskName, directoryName)},
+		Embedded: embedded{relFiles: hrefs.embed(names, diskName, directoryName)},
 	})
 }
 
 func GetVariations(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 	directoryName string,
 	fileName string,
@@ -102,6 +108,8 @@ func GetVariations(
 
 	sort.Strings(filenames)
 
+	hrefs := newLinkBuilder(r)
+
 	variants := make([]embeddedResource, 0, len(filenames))
 
 	for _, variant := range filenames {
@@ -109,7 +117,7 @@ func GetVariations(
 
 		// a variant is only reachable if downloads are enabled, as there is no route for it otherwise
 		if config.GetInstance().Downloads().Enabled {
-			resource.Links = links{relDownload: linkTo(diskName, directoryName, fileName, variant)}
+			resource.Links = links{relDownload: hrefs.to(diskName, directoryName, fileName, variant)}
 		}
 
 		variants = append(variants, resource)
@@ -118,8 +126,8 @@ func GetVariations(
 	writeData(w, namedResource{
 		Name: fileName,
 		Links: links{
-			relSelf: linkTo(diskName, directoryName, fileName),
-			relUp:   linkTo(diskName, directoryName),
+			relSelf: hrefs.to(diskName, directoryName, fileName),
+			relUp:   hrefs.to(diskName, directoryName),
 		},
 		Embedded: embedded{relVariants: variants},
 	})

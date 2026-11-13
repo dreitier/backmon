@@ -72,6 +72,8 @@ $ curl -u my_username:my_password http://localhost:8000/api/my-bucket
 }
 ```
 
+If *backmon* runs behind a reverse proxy which strips a path prefix (e.g. `https://example.com/backmon/api` is forwarded as `/api`), the proxy has to send the prefix in the `X-Forwarded-Prefix` header. The links and the redirect from `/` to `/api` then start with the prefix. Traefik's `StripPrefix` middleware sets the header on its own.
+
 Errors are still reported as plain text with the matching HTTP status code.
 
 ### Dependencies

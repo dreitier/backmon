@@ -267,6 +267,68 @@ func TestRouter_unknownFileIsNotFound(t *testing.T) {
 	}
 }
 
+// Behind a reverse proxy which strips a path prefix, links and redirects contain the prefix of X-Forwarded-Prefix.
+func TestRouter_linksContainTheForwardedPrefix(t *testing.T) {
+	get := func(path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.SetBasicAuth(testUsername, testPassword)
+		req.Header.Set("X-Forwarded-Prefix", "/backmon/")
+
+		rec := httptest.NewRecorder()
+		GetInstance().endpointsRouter.ServeHTTP(rec, req)
+
+		return rec
+	}
+
+	if rec := get("/"); rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/backmon/api" {
+		t.Errorf("status = %d, Location = %q, want a redirect to /backmon/api", rec.Code, rec.Header().Get("Location"))
+	}
+
+	// the proxy strips the prefix again, so the paths of the requests don't have it
+	path := "/api"
+
+	for _, rel := range []string{"disks", "directories", "files", "variants"} {
+		var resource halResource
+		if err := json.Unmarshal(get(path).Body.Bytes(), &resource); err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+
+		assertLinks(t, resource, map[string]string{"self": "/backmon" + path})
+
+		if rel != "disks" && !strings.HasPrefix(resource.Links["up"].Href, "/backmon/api") {
+			t.Errorf("link up of %q = %q, want the prefix /backmon", resource.Name, resource.Links["up"].Href)
+		}
+
+		children := resource.Embedded[rel]
+		if len(children) != 1 {
+			t.Fatalf("%s of %q = %v, want exactly one", rel, resource.Name, resource.names(rel))
+		}
+
+		child := children[0].Links["self"].Href
+		if rel == "variants" {
+			child = children[0].Links["download"].Href
+		}
+
+		if !strings.HasPrefix(child, "/backmon/api/") {
+			t.Fatalf("link of %s %q = %q, want the prefix /backmon", rel, children[0].Name, child)
+		}
+
+		path = strings.TrimPrefix(child, "/backmon")
+	}
+}
+
+func TestRouter_ignoresForwardedPrefixOfAnotherHost(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Forwarded-Prefix", "//evil.example")
+
+	rec := httptest.NewRecorder()
+	GetInstance().endpointsRouter.ServeHTTP(rec, req)
+
+	if location := rec.Header().Get("Location"); location != "/api" {
+		t.Errorf("Location = %q, want /api", location)
+	}
+}
+
 func TestRouter_downloadsLatestFileOfGroup(t *testing.T) {
 	groups := getResource(t, apiPath(testDiskName, "my-backups", "pgdump")).names("variants")
 

@@ -36,7 +36,7 @@ func GetInstance() *RouteConfiguration {
 		instance.endpointsRouter.Handle("/metrics", metrics.Handler())
 
 		// #2: for /api, we are using an HTTP Basic Auth middleware
-		apiEndpoint := instance.endpointsRouter.PathPrefix("/api").Subrouter()
+		apiEndpoint := instance.endpointsRouter.PathPrefix(apiRoot).Subrouter()
 
 		apiEndpoint.Use(loggingMiddleware)
 
@@ -74,7 +74,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // BaseHandler Base route to access the API Documentation.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/api", http.StatusMovedPermanently)
+	http.Redirect(w, r, apiRoot, http.StatusMovedPermanently)
 }
 
 func EnvHandler(w http.ResponseWriter, _ *http.Request) {

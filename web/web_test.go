@@ -47,7 +47,7 @@ func TestUnescapeInvalidEscapeLeftUnchanged(t *testing.T) {
 	}
 }
 
-// writeData marshals the payload to JSON, sets the JSON content type and writes
+// writeData marshals the payload to JSON, sets the HAL content type and writes
 // the body with a 200 status on success.
 func TestWriteDataSuccess(t *testing.T) {
 	rec := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func TestWriteDataSuccess(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
+	if ct := rec.Header().Get("Content-Type"); ct != "application/hal+json" {
 		t.Errorf("content-type = %q", ct)
 	}
 	if body := strings.TrimSpace(rec.Body.String()); body != `{"answer":42}` {

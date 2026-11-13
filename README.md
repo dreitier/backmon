@@ -35,6 +35,45 @@ environments:
 
 For Google Cloud Storage, *backmon* needs the permissions `storage.buckets.list` (in the project, for `auto_discover_disks`), `storage.objects.list` and `storage.objects.get`, and `storage.objects.delete` if backups are purged.
 
+### API
+Besides `/metrics`, *backmon* serves a read-only API below `/api`. It is protected by HTTP Basic Auth if `http.basic_auth` is configured.
+
+The API follows [HATEOAS](https://en.wikipedia.org/wiki/HATEOAS) and responds with [HAL](https://datatracker.ietf.org/doc/html/draft-kelly-json-hal) documents (`application/hal+json`): clients start at `/api` and follow the links of the responses instead of building URLs themselves.
+
+| Resource | Path | Embedded resources |
+| --- | --- | --- |
+| Entry point | `/api` | `disks` |
+| Disk | `/api/{disk}` | `directories` |
+| Directory | `/api/{disk}/{directory}` | `files` |
+| File | `/api/{disk}/{directory}/{file}` | `variants` |
+
+Each resource has a `self` link and, except for the entry point, an `up` link to its parent. Its children are listed in `_embedded` with their `name` and their own `self` link. The variants of a file link to the newest backup with `download`, if `downloads.enabled` is set. Names are percent-encoded in links, e.g. the slashes in the name of a local disk.
+
+```
+$ curl -u my_username:my_password http://localhost:8000/api/my-bucket
+```
+
+```json
+{
+  "name": "my-bucket",
+  "quota": 0,
+  "_links": {
+    "self": { "href": "/api/my-bucket" },
+    "up": { "href": "/api" }
+  },
+  "_embedded": {
+    "directories": [
+      {
+        "name": "my-backups",
+        "_links": { "self": { "href": "/api/my-bucket/my-backups" } }
+      }
+    ]
+  }
+}
+```
+
+Errors are still reported as plain text with the matching HTTP status code.
+
 ### Dependencies
 During build time, *backmon* requires Go 1.26 or later.
 

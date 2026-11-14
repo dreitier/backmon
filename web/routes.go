@@ -74,7 +74,8 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // BaseHandler Base route to access the API Documentation.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, forwardedPrefix(r)+apiRoot, http.StatusMovedPermanently)
+	// forwardedPrefix only returns a plain absolute path, so the redirect can't leave the host of the request
+	http.Redirect(w, r, forwardedPrefix(r)+apiRoot, http.StatusMovedPermanently) //nolint:gosec // G710: see above
 }
 
 func EnvHandler(w http.ResponseWriter, r *http.Request) {

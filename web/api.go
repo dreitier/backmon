@@ -5,46 +5,97 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/dreitier/backmon/backup"
+	"github.com/dreitier/backmon/config"
 	"github.com/dreitier/backmon/storage"
 )
 
-func GetDisks(w http.ResponseWriter) {
+func GetDisks(w http.ResponseWriter, r *http.Request) {
+	hrefs := newLinkBuilder(r)
 	disks := storage.GetDisks()
+	names := make([]string, 0, len(disks))
 
-	writeData(w, disks)
+	for _, disk := range disks {
+		names = append(names, disk.Name)
+	}
+
+	sort.Strings(names)
+
+	writeData(w, rootResource{
+		Links:    links{relSelf: hrefs.to()},
+		Embedded: embedded{relDisks: hrefs.embed(names)},
+	})
 }
 
 func GetDirectories(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 ) {
+	hrefs := newLinkBuilder(r)
 	definition := findDefinition(w, diskName)
 	if definition == nil {
 		return
 	}
 
-	writeData(w, definition)
+	names := make([]string, 0, len(definition.Directories))
+
+	for _, dir := range definition.Directories {
+		names = append(names, dir.Alias)
+	}
+
+	disk := diskResource{
+		Name:  diskName,
+		Quota: definition.Quota,
+		Links: links{
+			relSelf: hrefs.to(diskName),
+			relUp:   hrefs.to(),
+		},
+		Embedded: embedded{relDirectories: hrefs.embed(names, diskName)},
+	}
+
+	if definition.Location != nil {
+		disk.Timezone = definition.Location.String()
+	}
+
+	writeData(w, disk)
 }
 
 func GetFiles(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 	directoryName string,
 ) {
+	hrefs := newLinkBuilder(r)
 	dir := findDirectory(w, diskName, directoryName)
 	if dir == nil {
 		return
 	}
 
-	writeData(w, dir.Files)
+	names := make([]string, 0, len(dir.Files))
+
+	for _, file := range dir.Files {
+		names = append(names, file.Alias)
+	}
+
+	writeData(w, namedResource{
+		Name: directoryName,
+		Links: links{
+			relSelf: hrefs.to(diskName, directoryName),
+			relUp:   hrefs.to(diskName),
+		},
+		Embedded: embedded{relFiles: hrefs.embed(names, diskName, directoryName)},
+	})
 }
 
 func GetVariations(
 	w http.ResponseWriter,
+	r *http.Request,
 	diskName string,
 	directoryName string,
 	fileName string,
@@ -55,7 +106,31 @@ func GetVariations(
 		return
 	}
 
-	writeData(w, filenames)
+	sort.Strings(filenames)
+
+	hrefs := newLinkBuilder(r)
+
+	variants := make([]embeddedResource, 0, len(filenames))
+
+	for _, variant := range filenames {
+		resource := embeddedResource{Name: variant}
+
+		// a variant is only reachable if downloads are enabled, as there is no route for it otherwise
+		if config.GetInstance().Downloads().Enabled {
+			resource.Links = links{relDownload: hrefs.to(diskName, directoryName, fileName, variant)}
+		}
+
+		variants = append(variants, resource)
+	}
+
+	writeData(w, namedResource{
+		Name: fileName,
+		Links: links{
+			relSelf: hrefs.to(diskName, directoryName, fileName),
+			relUp:   hrefs.to(diskName, directoryName),
+		},
+		Embedded: embedded{relVariants: variants},
+	})
 }
 
 func Download(
@@ -97,7 +172,7 @@ func writeData(w http.ResponseWriter, data interface{}) {
 		_, _ = w.Write([]byte(errStr))
 		return
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", halContentType)
 	_, err = w.Write(b)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

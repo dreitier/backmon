@@ -36,7 +36,7 @@ func GetInstance() *RouteConfiguration {
 		instance.endpointsRouter.Handle("/metrics", metrics.Handler())
 
 		// #2: for /api, we are using an HTTP Basic Auth middleware
-		apiEndpoint := instance.endpointsRouter.PathPrefix("/api").Subrouter()
+		apiEndpoint := instance.endpointsRouter.PathPrefix(apiRoot).Subrouter()
 
 		apiEndpoint.Use(loggingMiddleware)
 
@@ -74,11 +74,12 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // BaseHandler Base route to access the API Documentation.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/api", http.StatusMovedPermanently)
+	// forwardedPrefix only returns a plain absolute path, so the redirect can't leave the host of the request
+	http.Redirect(w, r, forwardedPrefix(r)+apiRoot, http.StatusMovedPermanently) //nolint:gosec // G710: see above
 }
 
-func EnvHandler(w http.ResponseWriter, _ *http.Request) {
-	GetDisks(w)
+func EnvHandler(w http.ResponseWriter, r *http.Request) {
+	GetDisks(w, r)
 	//_, _ = w.Write([]byte(`<h1>Available Disks:</h1>`))
 	//for _, disk := range response {
 	//	_, _ = w.Write([]byte(`<a href="/env/`))
@@ -94,7 +95,7 @@ func DiskInfoHandler(w http.ResponseWriter, r *http.Request) {
 	unescape(vars)
 	diskName := vars["disk"]
 
-	GetDirectories(w, diskName)
+	GetDirectories(w, r, diskName)
 }
 
 func DirectoryInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +104,7 @@ func DirectoryInfoHandler(w http.ResponseWriter, r *http.Request) {
 	diskName := vars["disk"]
 	dirName := vars["dir"]
 
-	GetFiles(w, diskName, dirName)
+	GetFiles(w, r, diskName, dirName)
 }
 
 func FileInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +114,7 @@ func FileInfoHandler(w http.ResponseWriter, r *http.Request) {
 	dirName := vars["dir"]
 	fileName := vars["file"]
 
-	GetVariations(w, diskName, dirName, fileName)
+	GetVariations(w, r, diskName, dirName, fileName)
 }
 
 func diskNotFound(w http.ResponseWriter, disk string) {

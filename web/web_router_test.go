@@ -34,6 +34,48 @@ func apiPath(segments ...string) string {
 	return path
 }
 
+// halResource is the part of a HAL document the tests navigate with
+type halResource struct {
+	Name     string                   `json:"name"`
+	Links    map[string]halLink       `json:"_links"`
+	Embedded map[string][]halResource `json:"_embedded"`
+}
+
+type halLink struct {
+	Href string `json:"href"`
+}
+
+func getResource(t *testing.T, path string) halResource {
+	t.Helper()
+
+	var resource halResource
+	getJSON(t, path, &resource)
+
+	return resource
+}
+
+// names returns the names of the embedded resources of a relation
+func (r halResource) names(rel string) []string {
+	names := make([]string, 0, len(r.Embedded[rel]))
+
+	for _, child := range r.Embedded[rel] {
+		names = append(names, child.Name)
+	}
+
+	return names
+}
+
+// assertLinks checks the links of a resource; an empty href means that the relation must be absent
+func assertLinks(t *testing.T, resource halResource, want map[string]string) {
+	t.Helper()
+
+	for rel, href := range want {
+		if got := resource.Links[rel].Href; got != href {
+			t.Errorf("link %q of %q = %q, want %q", rel, resource.Name, got, href)
+		}
+	}
+}
+
 func getJSON(t *testing.T, path string, target interface{}) {
 	t.Helper()
 
@@ -42,8 +84,8 @@ func getJSON(t *testing.T, path string, target interface{}) {
 		t.Fatalf("GET %s: status = %d, body = %q", path, rec.Code, rec.Body.String())
 	}
 
-	if contentType := rec.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "application/json") {
-		t.Errorf("GET %s: Content-Type = %q, want application/json", path, contentType)
+	if contentType := rec.Header().Get("Content-Type"); contentType != "application/hal+json" {
+		t.Errorf("GET %s: Content-Type = %q, want application/hal+json", path, contentType)
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), target); err != nil {
@@ -97,35 +139,115 @@ func TestRouter_apiOnlyServesGet(t *testing.T) {
 }
 
 func TestRouter_listsDisks(t *testing.T) {
-	var disks []string
-	getJSON(t, "/api", &disks)
+	root := getResource(t, "/api")
 
-	if len(disks) != 1 || disks[0] != testDiskName {
-		t.Errorf("disks = %v, want only %q", disks, testDiskName)
+	assertLinks(t, root, map[string]string{"self": "/api", "up": ""})
+
+	disks := root.Embedded["disks"]
+	if len(disks) != 1 || disks[0].Name != testDiskName {
+		t.Fatalf("disks = %v, want only %q", root.names("disks"), testDiskName)
 	}
+
+	assertLinks(t, disks[0], map[string]string{"self": apiPath(testDiskName)})
 }
 
 func TestRouter_showsDefinitionsOfDisk(t *testing.T) {
-	rec := request(http.MethodGet, apiPath(testDiskName), true)
+	path := apiPath(testDiskName)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+	var disk struct {
+		halResource
+		Quota    *uint64 `json:"quota"`
+		Timezone *string `json:"timezone"`
+	}
+	getJSON(t, path, &disk)
+
+	if disk.Name != testDiskName {
+		t.Errorf("name = %q, want %q", disk.Name, testDiskName)
 	}
 
-	if !json.Valid(rec.Body.Bytes()) || !strings.Contains(rec.Body.String(), "my-backups") {
-		t.Errorf("body = %q, want JSON containing the directory my-backups", rec.Body.String())
+	if disk.Quota == nil || *disk.Quota != 0 {
+		t.Errorf("quota = %v, want 0 as the definitions have none", disk.Quota)
 	}
+
+	if disk.Timezone != nil {
+		t.Errorf("timezone = %q, want none as the definitions have none", *disk.Timezone)
+	}
+
+	assertLinks(t, disk.halResource, map[string]string{"self": path, "up": "/api"})
+
+	directories := disk.Embedded["directories"]
+	if len(directories) != 1 || directories[0].Name != "my-backups" {
+		t.Fatalf("directories = %v, want only my-backups", disk.names("directories"))
+	}
+
+	assertLinks(t, directories[0], map[string]string{"self": apiPath(testDiskName, "my-backups")})
 }
 
 func TestRouter_showsFilesOfDirectory(t *testing.T) {
-	rec := request(http.MethodGet, apiPath(testDiskName, "my-backups"), true)
+	path := apiPath(testDiskName, "my-backups")
+	directory := getResource(t, path)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+	if directory.Name != "my-backups" {
+		t.Errorf("name = %q, want my-backups", directory.Name)
 	}
 
-	if !json.Valid(rec.Body.Bytes()) || !strings.Contains(rec.Body.String(), "pgdump") {
-		t.Errorf("body = %q, want JSON containing the file pgdump", rec.Body.String())
+	assertLinks(t, directory, map[string]string{"self": path, "up": apiPath(testDiskName)})
+
+	files := directory.Embedded["files"]
+	if len(files) != 1 || files[0].Name != "pgdump" {
+		t.Fatalf("files = %v, want only pgdump", directory.names("files"))
+	}
+
+	assertLinks(t, files[0], map[string]string{"self": apiPath(testDiskName, "my-backups", "pgdump")})
+}
+
+func TestRouter_showsVariantsOfFile(t *testing.T) {
+	path := apiPath(testDiskName, "my-backups", "pgdump")
+	file := getResource(t, path)
+
+	if file.Name != "pgdump" {
+		t.Errorf("name = %q, want pgdump", file.Name)
+	}
+
+	assertLinks(t, file, map[string]string{"self": path, "up": apiPath(testDiskName, "my-backups")})
+
+	variants := file.Embedded["variants"]
+	if len(variants) != 1 {
+		t.Fatalf("variants = %v, want exactly one", file.names("variants"))
+	}
+
+	assertLinks(t, variants[0], map[string]string{
+		"download": apiPath(testDiskName, "my-backups", "pgdump", variants[0].Name),
+	})
+}
+
+// A client only knows /api and reaches the newest backup by following the links of the responses.
+func TestRouter_isNavigableFromTheRoot(t *testing.T) {
+	resource := getResource(t, "/api")
+
+	for _, rel := range []string{"disks", "directories", "files"} {
+		children := resource.Embedded[rel]
+		if len(children) != 1 {
+			t.Fatalf("%s of %q = %v, want exactly one", rel, resource.Name, resource.names(rel))
+		}
+
+		parent := resource.Links["self"].Href
+		resource = getResource(t, children[0].Links["self"].Href)
+
+		if up := resource.Links["up"].Href; up != parent {
+			t.Errorf("link up of %q = %q, want %q", resource.Name, up, parent)
+		}
+	}
+
+	variants := resource.Embedded["variants"]
+	if len(variants) != 1 {
+		t.Fatalf("variants = %v, want exactly one", resource.names("variants"))
+	}
+
+	rec := request(http.MethodGet, variants[0].Links["download"].Href, true)
+
+	if rec.Code != http.StatusOK || rec.Body.String() != testDiskFiles["backups/dump-20220718.sql"] {
+		t.Errorf("status = %d, body = %q, want the content of the newest dump", rec.Code, rec.Body.String())
 	}
 }
 
@@ -145,9 +267,70 @@ func TestRouter_unknownFileIsNotFound(t *testing.T) {
 	}
 }
 
+// Behind a reverse proxy which strips a path prefix, links and redirects contain the prefix of X-Forwarded-Prefix.
+func TestRouter_linksContainTheForwardedPrefix(t *testing.T) {
+	get := func(path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.SetBasicAuth(testUsername, testPassword)
+		req.Header.Set("X-Forwarded-Prefix", "/backmon/")
+
+		rec := httptest.NewRecorder()
+		GetInstance().endpointsRouter.ServeHTTP(rec, req)
+
+		return rec
+	}
+
+	if rec := get("/"); rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/backmon/api" {
+		t.Errorf("status = %d, Location = %q, want a redirect to /backmon/api", rec.Code, rec.Header().Get("Location"))
+	}
+
+	// the proxy strips the prefix again, so the paths of the requests don't have it
+	path := "/api"
+
+	for _, rel := range []string{"disks", "directories", "files", "variants"} {
+		var resource halResource
+		if err := json.Unmarshal(get(path).Body.Bytes(), &resource); err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+
+		assertLinks(t, resource, map[string]string{"self": "/backmon" + path})
+
+		if rel != "disks" && !strings.HasPrefix(resource.Links["up"].Href, "/backmon/api") {
+			t.Errorf("link up of %q = %q, want the prefix /backmon", resource.Name, resource.Links["up"].Href)
+		}
+
+		children := resource.Embedded[rel]
+		if len(children) != 1 {
+			t.Fatalf("%s of %q = %v, want exactly one", rel, resource.Name, resource.names(rel))
+		}
+
+		child := children[0].Links["self"].Href
+		if rel == "variants" {
+			child = children[0].Links["download"].Href
+		}
+
+		if !strings.HasPrefix(child, "/backmon/api/") {
+			t.Fatalf("link of %s %q = %q, want the prefix /backmon", rel, children[0].Name, child)
+		}
+
+		path = strings.TrimPrefix(child, "/backmon")
+	}
+}
+
+func TestRouter_ignoresForwardedPrefixOfAnotherHost(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Forwarded-Prefix", "//evil.example")
+
+	rec := httptest.NewRecorder()
+	GetInstance().endpointsRouter.ServeHTTP(rec, req)
+
+	if location := rec.Header().Get("Location"); location != "/api" {
+		t.Errorf("Location = %q, want /api", location)
+	}
+}
+
 func TestRouter_downloadsLatestFileOfGroup(t *testing.T) {
-	var groups []string
-	getJSON(t, apiPath(testDiskName, "my-backups", "pgdump"), &groups)
+	groups := getResource(t, apiPath(testDiskName, "my-backups", "pgdump")).names("variants")
 
 	if len(groups) != 1 {
 		t.Fatalf("groups = %v, want exactly one", groups)

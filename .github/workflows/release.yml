@@ -8,6 +8,8 @@ name: Release
 # 3. GoReleaser attaches binaries for linux/darwin/windows (amd64, arm64), checksums and SBOMs
 # 4. multi-arch Docker images are pushed to Docker Hub and GHCR
 # Binaries and images get build provenance attestations (verify with `gh attestation verify`).
+# The image's CycloneDX SBOM goes to Dependency-Track (secret DEPENDENCYTRACK_API_KEY). Trivy, SBOM, upload and
+# image signing come from dreitier/shared-ci-components.
 on:
   push:
     branches:
@@ -141,6 +143,8 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     env:
       VERSION: ${{ needs.semantic-release.outputs.version }}
     steps:
@@ -200,17 +204,15 @@ jobs:
             GIT_COMMIT=${{ steps.git.outputs.short_sha }}
             GIT_TAG=${{ env.VERSION }}
 
-      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
-        with:
-          cosign-release: v3.1.3
-
-      # keyless Sigstore signatures (GitHub OIDC identity of this workflow), verifiable with `cosign verify`
+      # keyless Sigstore signatures (GitHub OIDC identity of this workflow), verifiable with `cosign verify`;
+      # the provenance comes from actions/attest-build-provenance below
       - name: Sign images
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          cosign sign --yes "index.docker.io/dreitier/backmon@${DIGEST}"
-          cosign sign --yes "ghcr.io/dreitier/backmon@${DIGEST}"
+        uses: dreitier/shared-ci-components/cosign-sign@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        with:
+          images: |
+            index.docker.io/dreitier/backmon
+            ghcr.io/dreitier/backmon
+          digest: ${{ steps.build.outputs.digest }}
 
       - name: Attest image on Docker Hub
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -225,6 +227,29 @@ jobs:
           subject-name: ghcr.io/dreitier/backmon
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+  # CycloneDX SBOM of the released image → Dependency-Track (project backmon, version = release). A separate
+  # job: a Dependency-Track outage must not fail the image job. The image is public – no login.
+  sbom:
+    name: SBOM → Dependency-Track
+    needs: [semantic-release, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate SBOM
+        id: sbom
+        uses: dreitier/shared-ci-components/sbom@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        with:
+          image: ghcr.io/dreitier/backmon@${{ needs.image.outputs.digest }}
+
+      - name: Upload to Dependency-Track
+        uses: dreitier/shared-ci-components/dependency-track-upload@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        with:
+          api-key: ${{ secrets.DEPENDENCYTRACK_API_KEY }}
+          bom: ${{ steps.sbom.outputs.file }}
+          project-name: backmon
+          project-version: ${{ needs.semantic-release.outputs.version }}
 
   # helm-charts opens a PR that updates the backmon chart to this version (.github/workflows/update-backmon.yaml there)
   helm-chart:

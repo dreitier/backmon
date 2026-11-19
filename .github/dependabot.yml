@@ -50,25 +50,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: daily
-      time: "06:00"
-      timezone: Europe/Berlin
-    commit-message:
-      prefix: ci
-      include: scope
-    groups:
-      semantic-release:
-        patterns:
-          - "*"
-    ignore:
-      # 10.x needs a newer conventional-changelog-writer than semantic-release 25 bundles
-      - dependency-name: conventional-changelog-conventionalcommits
-        update-types:
-          - version-update:semver-major
-
   # hook versions in .pre-commit-config.yaml; the CI lint job runs the same hooks and golangci-lint version
   - package-ecosystem: pre-commit
     directory: /

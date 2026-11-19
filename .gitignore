@@ -19,4 +19,3 @@ config.yaml
 backmon
 selfsigned.*
 dist
-node_modules

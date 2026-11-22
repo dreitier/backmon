@@ -35,6 +35,14 @@ environments:
 
 For Google Cloud Storage, *backmon* needs the permissions `storage.buckets.list` (in the project, for `auto_discover_disks`), `storage.objects.list` and `storage.objects.get`, and `storage.objects.delete` if backups are purged.
 
+### Web UI
+Browsers opening `/` get a small web UI; all other clients are still redirected to `/api`. The UI
+
+- shows a summary of all monitored disks and their backups (status, latest backup, size, number of backups, quota usage), built from `/metrics` and refreshed every 30 seconds,
+- contains a HAL browser for `/api`, which follows the links of the API and downloads the latest backup of a group if `downloads.enabled` is set.
+
+The UI has no endpoints of its own: if `http.basic_auth` is configured, the browser asks for the credentials as soon as the API browser is opened. Behind a reverse proxy, the UI uses the prefix of `X-Forwarded-Prefix` like the API.
+
 ### API
 Besides `/metrics`, *backmon* serves a read-only API below `/api`. It is protected by HTTP Basic Auth if `http.basic_auth` is configured.
 
@@ -72,7 +80,7 @@ $ curl -u my_username:my_password http://localhost:8000/api/my-bucket
 }
 ```
 
-If *backmon* runs behind a reverse proxy which strips a path prefix (e.g. `https://example.com/backmon/api` is forwarded as `/api`), the proxy has to send the prefix in the `X-Forwarded-Prefix` header. The links and the redirect from `/` to `/api` then start with the prefix. Traefik's `StripPrefix` middleware sets the header on its own.
+If *backmon* runs behind a reverse proxy which strips a path prefix (e.g. `https://example.com/backmon/api` is forwarded as `/api`), the proxy has to send the prefix in the `X-Forwarded-Prefix` header. The links, the redirect from `/` to `/api` and the paths of the web UI then start with the prefix. Traefik's `StripPrefix` middleware sets the header on its own.
 
 Errors are still reported as plain text with the matching HTTP status code.
 

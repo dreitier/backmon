@@ -39,12 +39,8 @@ func StartServer() error {
 		tlsNextProto = restrictedProtos
 	}
 
-	router := mux.NewRouter()
-
-	router.PathPrefix("/").Handler(GetInstance().endpointsRouter)
-
 	srv := &http.Server{
-		Handler:      router,
+		Handler:      newHandler(),
 		Addr:         listenAddr,
 		TLSConfig:    tlsServerConfig,
 		TLSNextProto: tlsNextProto,
@@ -59,6 +55,16 @@ func StartServer() error {
 
 	// if no TLS configuration is present, work in unencrypted mode
 	return srv.ListenAndServe()
+}
+
+// newHandler returns the handler of the webserver. The router keeps the path encoded, otherwise the escaped slashes
+// in names of local disks (/api/%2Fbackup%2Fdb) would be decoded and the path redirected to a cleaned, unknown path.
+func newHandler() http.Handler {
+	router := mux.NewRouter().UseEncodedPath()
+
+	router.PathPrefix("/").Handler(GetInstance().endpointsRouter)
+
+	return router
 }
 
 // strictTLSConfig is used for `strict: true`. The key exchanges are left to Go's defaults,

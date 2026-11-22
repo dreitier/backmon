@@ -35,6 +35,10 @@ func GetInstance() *RouteConfiguration {
 		instance.endpointsRouter.HandleFunc("/", BaseHandler)
 		instance.endpointsRouter.Handle("/metrics", metrics.Handler())
 
+		for name, asset := range uiAssetFiles {
+			instance.endpointsRouter.Handle(uiRoot+name, uiAssetHandler(asset)).Methods(HttpMethodGet)
+		}
+
 		// #2: for /api, we are using an HTTP Basic Auth middleware
 		apiEndpoint := instance.endpointsRouter.PathPrefix(apiRoot).Subrouter()
 
@@ -83,8 +87,13 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// BaseHandler Base route to access the API Documentation.
+// BaseHandler serves the web UI to browsers and permanently redirects all other clients to the API.
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
+	if acceptsHTML(r) {
+		UIHandler(w, r)
+		return
+	}
+
 	// forwardedPrefix only returns a plain absolute path, so the redirect can't leave the host of the request
 	http.Redirect(w, r, forwardedPrefix(r)+apiRoot, http.StatusMovedPermanently) //nolint:gosec // G710: see above
 }

@@ -119,6 +119,9 @@ By default, the chart pulls the image from Docker Hub; set `image.repository=ghc
 	$ sudo apt install golang-go
 	$ sudo go build
 
+### Reloading the configuration
+backmon re-reads `config.yaml` and rescans all disks when it receives `SIGHUP` (`kill -HUP <pid>`, `systemctl reload backmon`, `docker kill -s HUP <container>`) or when `r` is pressed in interactive mode. Everything except `port` and `http.tls` is applied without a restart. An invalid file is rejected: backmon logs the error, keeps the active configuration and sets the metric `backmon_config_last_reload_successful` to `0`. See the [documentation](https://dreitier.github.io/backmon-docs/reference/backmon-configuration/overview#reloading-the-configuration) for details; in Kubernetes, the [Helm chart](https://github.com/dreitier/helm-charts/tree/main/charts/backmon#reloading-the-configuration) restarts the pod instead.
+
 ### Binaries
 Binaries for Linux, macOS and Windows (amd64 and arm64) are attached to each [GitHub release](https://github.com/dreitier/backmon/releases), together with `checksums.txt` and SBOMs.
 

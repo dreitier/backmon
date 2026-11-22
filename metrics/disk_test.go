@@ -191,3 +191,24 @@ func TestUpdateDiskQuota(t *testing.T) {
 		t.Errorf("expected disk_quota_bytes unregistered, got %d (err=%v)", n, err)
 	}
 }
+
+func TestConfigReloaded(t *testing.T) {
+	sut := GetApplicationMetrics()
+
+	sut.ConfigReloaded(true)
+
+	timestamp := testutil.ToFloat64(sut.configLastReloadSuccessTimestamp)
+	if got := testutil.ToFloat64(sut.configLastReloadSuccessful); got != 1 || timestamp == 0 {
+		t.Fatalf("after a successful reload: successful = %v, timestamp = %v", got, timestamp)
+	}
+
+	sut.ConfigReloaded(false)
+
+	if got := testutil.ToFloat64(sut.configLastReloadSuccessful); got != 0 {
+		t.Errorf("after a failed reload: successful = %v, want 0", got)
+	}
+
+	if got := testutil.ToFloat64(sut.configLastReloadSuccessTimestamp); got != timestamp {
+		t.Errorf("a failed reload must keep the timestamp of the last success, got %v, want %v", got, timestamp)
+	}
+}

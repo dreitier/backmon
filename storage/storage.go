@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -31,14 +30,43 @@ const (
 	maxDirDepth uint64 = 100
 )
 
+// InitializeConfiguration registers the environments of the active configuration
 func InitializeConfiguration() {
-	envs := config.GetInstance().Environments()
+	ApplyConfiguration(config.GetInstance().Environments())
+}
+
+// ApplyConfiguration makes the given environments the monitored ones. It is used at startup and after the
+// configuration has been reloaded: environments which are no longer configured are dropped together with
+// their metrics, new ones are registered. An environment which is still configured gets a new client (e.g.
+// for rotated credentials) but keeps its disks, so that its metrics don't vanish until the next update of
+// the disks has finished. Disks which are no longer available or included are dropped by that update.
+func ApplyConfiguration(envs []*config.EnvironmentConfiguration) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	configured := make(map[string]bool, len(envs))
+
 	for _, env := range envs {
-		clients[env.Name] = &clientData{
-			DefinitionFilename: env.Definitions,
-			Definition:         &fs.FileInfo{Name: env.Definitions},
-			Client:             NewClient(env.Client),
-			Disks:              make(map[string]*DiskData),
+		configured[env.Name] = true
+
+		client, exists := clients[env.Name]
+		if !exists {
+			log.Debugf("[env:%s] Registering environment", env.Name)
+			client = &clientData{Disks: make(map[string]*DiskData)}
+			clients[env.Name] = client
+		}
+
+		client.DefinitionFilename = env.Definitions
+		client.Definition = &fs.FileInfo{Name: env.Definitions}
+		client.Client = NewClient(env.Client)
+		client.disksFilter = env.Client.Disks
+	}
+
+	for envName, client := range clients {
+		if !configured[envName] {
+			log.Infof("[env:%s] Environment is no longer configured, dropping its disks", envName)
+			client.dropAllDisks()
+			delete(clients, envName)
 		}
 	}
 }
@@ -48,6 +76,8 @@ type clientData struct {
 	Definition         *fs.FileInfo
 	Client             Client
 	Disks              map[string]*DiskData
+	// disksFilter is the `disks:` section of the environment; nil includes every disk
+	disksFilter *config.DisksConfiguration
 }
 
 func (client *clientData) updateDiskInfo(environmentName string) error {
@@ -79,25 +109,17 @@ func (client *clientData) updateDiskInfo(environmentName string) error {
 
 	// add disks that are new on the client to the map
 	for _, diskName := range diskNames {
-		var environment *config.EnvironmentConfiguration
-		for _, env := range config.GetInstance().Environments() {
-			if env.Name == environmentName {
-				environment = env
-				break
+		_, exists := client.Disks[diskName]
+
+		if client.disksFilter != nil && !client.disksFilter.IsDiskIncluded(diskName) {
+			// the disk may have been excluded by a reloaded configuration
+			if exists {
+				client.Disks[diskName].metrics.Drop()
+				delete(client.Disks, diskName)
 			}
-		}
 
-		if environment == nil {
-			log.Errorf("Could not find environment with name %s", environmentName)
-			client.dropAllDisks()
-			return errors.New("failed to update disks config for client")
-		}
-
-		if !environment.Client.Disks.IsDiskIncluded(diskName) {
 			continue
 		}
-
-		_, exists := client.Disks[diskName]
 
 		// ignore disks containing a file called '.backmonignore'
 		buf, _, _, err := client.Client.Download(diskName, ignoreFile)

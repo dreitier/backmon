@@ -40,27 +40,38 @@ func GetInstance() *RouteConfiguration {
 
 		apiEndpoint.Use(loggingMiddleware)
 
-		if config.GetInstance().Http().BasicAuth != nil {
-			log.Debug("Registering Basic Auth middleware")
-
-			apiEndpoint.Use(httpauth.SimpleBasicAuth(
-				config.GetInstance().Http().BasicAuth.Username,
-				config.GetInstance().Http().BasicAuth.Password,
-			))
-		}
+		apiEndpoint.Use(basicAuthMiddleware)
 
 		apiEndpoint.HandleFunc("", EnvHandler)
 		apiEndpoint.HandleFunc("/{disk}", DiskInfoHandler).Methods(HttpMethodGet)
 		apiEndpoint.HandleFunc("/{disk}/{dir}", DirectoryInfoHandler).Methods(HttpMethodGet)
 		apiEndpoint.HandleFunc("/{disk}/{dir}/{file}", FileInfoHandler).Methods(HttpMethodGet)
 
-		if config.GetInstance().Downloads().Enabled {
-			log.Debug("Registering GET handler for artifact downloads")
-			apiEndpoint.HandleFunc("/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet)
-		}
+		// the route only matches while downloads are enabled, so a request gets the same response as for any other unknown path
+		apiEndpoint.HandleFunc("/{disk}/{dir}/{file}/{variant}", LatestFileHandler).Methods(HttpMethodGet).MatcherFunc(downloadsEnabled)
 	})
 
 	return instance
+}
+
+// basicAuthMiddleware protects the API if `http.basic_auth` is configured. The configuration is read on each
+// request, so that credentials changed by a configuration reload apply without a restart.
+func basicAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		basicAuth := config.GetInstance().Http().BasicAuth
+
+		if basicAuth == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		httpauth.SimpleBasicAuth(basicAuth.Username, basicAuth.Password)(next).ServeHTTP(w, r)
+	})
+}
+
+// downloadsEnabled reads `downloads.enabled` on each request, so that a configuration reload applies without a restart
+func downloadsEnabled(_ *http.Request, _ *mux.RouteMatch) bool {
+	return config.GetInstance().Downloads().Enabled
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

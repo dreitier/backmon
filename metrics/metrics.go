@@ -13,6 +13,7 @@ const (
 	subsystemBackup       = "backup"
 	subsystemEnvironments = "environments"
 	subsystemDisks        = "disks"
+	subsystemConfig       = "config"
 )
 
 var (

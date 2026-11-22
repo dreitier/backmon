@@ -4,6 +4,8 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -24,6 +26,13 @@ const app = "backmon"
 var gitRepo = "dreitier/backmon"
 var gitCommit = "unknown"
 var gitTag = "unknown"
+
+var (
+	// reloadMutex serializes reloads triggered by SIGHUP and the reload key
+	reloadMutex sync.Mutex
+	// updateTicker schedules the periodic disk updates; a reload resets it if `update_interval` has changed
+	updateTicker *time.Ticker
+)
 
 func printVersion() {
 	if gitTag == "" {
@@ -47,6 +56,7 @@ func main() {
 
 	// #13: update number of total environments
 	metrics.GetApplicationMetrics().EnvironmentsTotal.Set(config.GetInstance().TotalEnvironments())
+	metrics.GetApplicationMetrics().ConfigReloaded(true)
 
 	storage.InitializeConfiguration()
 	scheduleDiskUpdates()
@@ -81,10 +91,53 @@ func configureTerminal() {
 	go pollKeyboard()
 }
 
-// handleReloadKey forces an update of all disks
+// handleReloadKey reloads the configuration and forces an update of all disks
 func handleReloadKey() {
 	log.Printf("Forcing reload...")
+	reload()
+}
+
+// reload reads the configuration file again and updates all disks. An invalid configuration file is
+// rejected: backmon keeps running with the configuration it has, and the disks are updated nevertheless.
+func reload() {
+	reloadMutex.Lock()
+	defer reloadMutex.Unlock()
+
+	if reloadConfiguration() {
+		log.Info("Configuration reloaded")
+	}
+
 	storage.UpdateDiskInfo()
+}
+
+// reloadConfiguration applies everything of a changed configuration file which doesn't need a restart
+// and returns whether the file could be loaded
+func reloadConfiguration() bool {
+	previous, current, err := config.Reload()
+	metrics.GetApplicationMetrics().ConfigReloaded(err == nil)
+
+	if err != nil {
+		log.Errorf("Could not reload configuration, keeping the active one: %v", err)
+		return false
+	}
+
+	if !config.HasGlobalDebugEnabled() {
+		log.SetLevel(current.Global().LogLevel())
+	}
+
+	if restart := config.RequiresRestart(previous, current); len(restart) > 0 {
+		log.Warnf("Changed configuration of %s is only applied after a restart", strings.Join(restart, ", "))
+	}
+
+	storage.ApplyConfiguration(current.Environments())
+	metrics.GetApplicationMetrics().EnvironmentsTotal.Set(current.TotalEnvironments())
+
+	if updateTicker != nil && previous.Global().UpdateInterval() != current.Global().UpdateInterval() {
+		log.Infof("Updating disks every %s from now on", current.Global().UpdateInterval())
+		updateTicker.Reset(current.Global().UpdateInterval())
+	}
+
+	return true
 }
 
 // handleExitKey restores the terminal and exits
@@ -108,7 +161,7 @@ func configureSignals() {
 	go func() {
 		for range c {
 			log.Printf("Got HUP signal, reloading ...")
-			storage.UpdateDiskInfo()
+			reload()
 		}
 	}()
 }
@@ -116,7 +169,12 @@ func configureSignals() {
 func scheduleDiskUpdates() {
 	updateInterval := config.GetInstance().Global().UpdateInterval()
 
-	ticker := time.NewTicker(updateInterval)
+	// a SIGHUP may already be handled while backmon is starting
+	reloadMutex.Lock()
+	updateTicker = time.NewTicker(updateInterval)
+	ticker := updateTicker
+	reloadMutex.Unlock()
+
 	go func() {
 		storage.UpdateDiskInfo()
 		for range ticker.C {

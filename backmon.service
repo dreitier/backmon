@@ -4,6 +4,8 @@ Description=Backup Metrics Exporter
 [Service]
 # root privileges required due to file permissions
 ExecStart=/opt/backmon/backmon
+# `systemctl reload backmon` re-reads config.yaml and rescans the disks
+ExecReload=/bin/kill -HUP $MAINPID
 WorkingDirectory=/opt/backmon
 Restart=always
 

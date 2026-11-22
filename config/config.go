@@ -7,7 +7,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -21,8 +23,11 @@ type Configuration struct {
 }
 
 var (
-	instance                    *Configuration
-	once                        sync.Once
+	// instance is replaced as a whole by Reload, so that readers always see a consistent configuration
+	instance atomic.Pointer[Configuration]
+	once     sync.Once
+	// loadedConfigPath is the configuration file found at startup; Reload reads the same file again
+	loadedConfigPath            string
 	configSearchDirectories     []string
 	hasGlobalDebugEnabled       bool
 	isRunningInBackgroundForced bool
@@ -58,11 +63,62 @@ func HasGlobalDebugEnabled() bool {
 	return hasGlobalDebugEnabled
 }
 
+// GetInstance returns the active configuration. It is loaded on first use and replaced by Reload; callers
+// must not keep the returned pointer if they want to see reloaded values.
 func GetInstance() *Configuration {
 	once.Do(func() {
-		instance = CreateFromConfigurationFiles()
+		instance.Store(CreateFromConfigurationFiles())
 	})
-	return instance
+	return instance.Load()
+}
+
+// Reload reads the configuration file found at startup again and activates it. If the file can't be read
+// or is invalid, the active configuration stays untouched and an error is returned. Other than at startup,
+// a single invalid environment rejects the whole file: silently dropping an environment which has been
+// monitored so far would remove its metrics.
+func Reload() (previous *Configuration, current *Configuration, err error) {
+	previous = GetInstance()
+
+	if loadedConfigPath == "" {
+		return previous, previous, errors.New("no configuration file has been loaded which could be reloaded")
+	}
+
+	file, err := os.Open(loadedConfigPath)
+	if err != nil {
+		return previous, previous, fmt.Errorf("failed to open configuration file: %w", err)
+	}
+
+	defer func() { _ = file.Close() }()
+
+	raw, err := Parse(file)
+	if err != nil {
+		return previous, previous, fmt.Errorf("failed to parse configuration file %s: %w", loadedConfigPath, err)
+	}
+
+	current, envErrs := newConfigurationInstance(raw)
+	if len(envErrs) > 0 {
+		return previous, previous, fmt.Errorf("configuration file %s is invalid: %w", loadedConfigPath, errors.Join(envErrs...))
+	}
+
+	instance.Store(current)
+
+	return previous, current, nil
+}
+
+// RequiresRestart lists the settings which differ between both configurations but are only applied when
+// backmon starts: the listener of the webserver is created once.
+func RequiresRestart(previous *Configuration, current *Configuration) []string {
+	var changed []string
+
+	if previous.Global().HttpPort() != current.Global().HttpPort() {
+		changed = append(changed, "port")
+	}
+
+	if !reflect.DeepEqual(previous.Http().Tls, current.Http().Tls) {
+		changed = append(changed, "http.tls")
+	}
+
+	return changed
 }
 
 func (c *Configuration) Global() *GlobalConfiguration {
@@ -107,6 +163,7 @@ func CreateFromConfigurationFiles() *Configuration {
 
 		if err == nil {
 			log.Infof("Found configuration file at location %s", possibleConfigPath)
+			loadedConfigPath = possibleConfigPath
 			break
 		}
 	}
@@ -127,23 +184,36 @@ func CreateFromConfigurationFiles() *Configuration {
 	return NewConfigurationInstance(cfg)
 }
 
-// NewConfigurationInstance Parse all section
+// NewConfigurationInstance Parse all section. Invalid environments are logged and skipped; the process
+// exits if no valid environment is left.
 func NewConfigurationInstance(cfg Raw) *Configuration {
-	var r *Configuration
+	r, envErrs := newConfigurationInstance(cfg)
 
+	for _, err := range envErrs {
+		log.Error(err)
+	}
+
+	if len(r.environments) == 0 {
+		log.Fatalf("No valid environments defined in configuration file. Did you miss the `environments` section?")
+	}
+
+	return r
+}
+
+// newConfigurationInstance parses all sections and returns one error for each invalid environment, or a
+// single error if there is no valid environment at all. It never exits the process.
+func newConfigurationInstance(cfg Raw) (*Configuration, []error) {
 	var globalConfiguration = parseGlobalSection(cfg)
 	var httpConfiguration = parseHttpSection(cfg.Sub("http"))
 	var downloadsConfiguration = parseDownloadsSection(cfg.Sub("downloads"))
-	var environmentsConfiguration = parseEnvironmentsSection(cfg.Sub("environments"))
+	environmentsConfiguration, envErrs := parseEnvironmentsSection(cfg.Sub("environments"))
 
-	r = &Configuration{
+	return &Configuration{
 		global:       globalConfiguration,
 		http:         httpConfiguration,
 		downloads:    downloadsConfiguration,
 		environments: environmentsConfiguration,
-	}
-
-	return r
+	}, envErrs
 }
 
 // ParseDisksSection Parses `disks:` section
@@ -347,8 +417,9 @@ func parseGlobalSection(cfg Raw) *GlobalConfiguration {
 	}
 }
 
-func parseEnvironmentsSection(cfg Raw) []*EnvironmentConfiguration {
+func parseEnvironmentsSection(cfg Raw) ([]*EnvironmentConfiguration, []error) {
 	var envs []*EnvironmentConfiguration
+	var errs []error
 
 	for envName := range cfg {
 		envCfg := cfg.Sub(envName)
@@ -356,18 +427,18 @@ func parseEnvironmentsSection(cfg Raw) []*EnvironmentConfiguration {
 		env, err := parseEnvironmentSection(envCfg, envName)
 
 		if err != nil {
-			log.Errorf("Environment '%s' could not be parsed: %s", envName, err)
+			errs = append(errs, fmt.Errorf("environment '%s' could not be parsed: %w", envName, err))
 			continue
 		}
 
 		envs = append(envs, env)
 	}
 
-	if len(envs) == 0 {
-		log.Fatalf("No valid environments defined in configuration file. Did you miss the `environments` section?")
+	if len(envs) == 0 && len(errs) == 0 {
+		errs = append(errs, errors.New("no environments defined, did you miss the `environments` section?"))
 	}
 
-	return envs
+	return envs, errs
 }
 
 func parseEnvironmentSection(cfg Raw, envName string) (*EnvironmentConfiguration, error) {

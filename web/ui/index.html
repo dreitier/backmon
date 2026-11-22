@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="{{.Base}}">
+  <title>backmon</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f766e'/%3E%3Cpath d='M8 11h16M8 16h16M8 21h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="ui/app.css">
+  <script src="ui/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M8 11h16M8 16h16M8 21h10"/></svg>
+      <span>backmon</span>
+    </a>
+    <nav>
+      <a href="#/" data-view="summary">Summary</a>
+      <a href="#/api" data-view="browser">API browser</a>
+      <a href="metrics" target="_blank" rel="noopener">Metrics</a>
+    </nav>
+    <div class="refresh">
+      <span id="updated" aria-live="polite"></span>
+      <button type="button" id="reload" title="Reload">Reload</button>
+    </div>
+  </header>
+
+  <main id="main">
+    <noscript><p class="notice">The backmon web UI needs JavaScript. The API is available at <a href="api">api</a>, the metrics at <a href="metrics">metrics</a>.</p></noscript>
+  </main>
+</body>
+</html>

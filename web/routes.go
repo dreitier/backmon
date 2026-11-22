@@ -34,7 +34,10 @@ func GetInstance() *RouteConfiguration {
 		instance.endpointsRouter.StrictSlash(true)
 		instance.endpointsRouter.HandleFunc("/", BaseHandler)
 		instance.endpointsRouter.Handle("/metrics", metrics.Handler())
-		instance.endpointsRouter.PathPrefix(uiRoot).HandlerFunc(UIAssetHandler).Methods(HttpMethodGet)
+
+		for name, asset := range uiAssetFiles {
+			instance.endpointsRouter.Handle(uiRoot+name, uiAssetHandler(asset)).Methods(HttpMethodGet)
+		}
 
 		// #2: for /api, we are using an HTTP Basic Auth middleware
 		apiEndpoint := instance.endpointsRouter.PathPrefix(apiRoot).Subrouter()

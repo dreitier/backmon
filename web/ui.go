@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// The web UI is a static single page application below /ui. It reads the summary from /metrics and browses /api
+// The web UI is a static single page application whose assets are served below /ui. It reads the summary from /metrics and browses /api
 // with the browser's own credentials, so it neither needs its own endpoints nor exposes anything new.
 const uiRoot = "/ui/"
 
@@ -79,28 +79,50 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(page.Bytes())
 }
 
-// UIAssetHandler serves the scripts and stylesheets of the web UI. Directories are not listed and the template of the
-// start page is only served through UIHandler.
-func UIAssetHandler(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimPrefix(r.URL.Path, uiRoot)
+// uiAsset is a script or stylesheet of the web UI
+type uiAsset struct {
+	contentType string
+	content     []byte
+}
 
-	if name == "" || name == "index.html" || strings.HasSuffix(name, "/") || !fs.ValidPath(name) {
-		http.NotFound(w, r)
-		return
-	}
+// uiAssetFiles are all files of the ui directory except the template of the start page, which is only served through
+// UIHandler. They are read once, so that a request can only get one of these files and directories are never listed.
+var uiAssetFiles = mustLoadUIAssets(uiAssets)
 
-	content, err := fs.ReadFile(uiAssets, name)
+func mustLoadUIAssets(fsys fs.FS) map[string]uiAsset {
+	assets := map[string]uiAsset{}
+
+	err := fs.WalkDir(fsys, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || name == "index.html" {
+			return err
+		}
+
+		content, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			return err
+		}
+
+		contentType := mime.TypeByExtension(path.Ext(name))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+
+		assets[name] = uiAsset{contentType: contentType, content: content}
+
+		return nil
+	})
 	if err != nil {
-		http.NotFound(w, r)
-		return
+		panic(err)
 	}
 
-	contentType := mime.TypeByExtension(path.Ext(name))
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
+	return assets
+}
 
-	setUIHeaders(w)
-	w.Header().Set("Content-Type", contentType)
-	_, _ = w.Write(content)
+// uiAssetHandler serves one asset of the web UI; each asset has its own route, so nothing of the request is used
+func uiAssetHandler(asset uiAsset) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		setUIHeaders(w)
+		w.Header().Set("Content-Type", asset.contentType)
+		_, _ = w.Write(asset.content)
+	}
 }

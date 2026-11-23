@@ -176,7 +176,7 @@ jobs:
       # keyless Sigstore signatures (GitHub OIDC identity of this workflow), verifiable with `cosign verify`;
       # the provenance comes from actions/attest-build-provenance below
       - name: Sign images
-        uses: dreitier/shared-ci-components/cosign-sign@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        uses: dreitier/shared-ci-components/cosign-sign@c8ebf58b2404cb3f7307c155525c68abfe1fc580 # v1.1.0
         with:
           images: |
             index.docker.io/dreitier/backmon
@@ -208,12 +208,12 @@ jobs:
     steps:
       - name: Generate SBOM
         id: sbom
-        uses: dreitier/shared-ci-components/sbom@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        uses: dreitier/shared-ci-components/sbom@c8ebf58b2404cb3f7307c155525c68abfe1fc580 # v1.1.0
         with:
           image: ghcr.io/dreitier/backmon@${{ needs.image.outputs.digest }}
 
       - name: Upload to Dependency-Track
-        uses: dreitier/shared-ci-components/dependency-track-upload@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        uses: dreitier/shared-ci-components/dependency-track-upload@c8ebf58b2404cb3f7307c155525c68abfe1fc580 # v1.1.0
         with:
           api-key: ${{ secrets.DEPENDENCYTRACK_API_KEY }}
           bom: ${{ steps.sbom.outputs.file }}
@@ -230,7 +230,7 @@ jobs:
     steps:
       - name: Create GitHub App token for dreitier/helm-charts
         id: app
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

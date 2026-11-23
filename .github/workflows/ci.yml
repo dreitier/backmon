@@ -325,7 +325,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
@@ -389,6 +389,6 @@ jobs:
       # CRITICAL/HIGH with a fix, SARIF to the Security tab (category trivy), exit code 0:
       # reporting only; govulncheck is the blocking gate for Go code
       - name: Scan image with Trivy
-        uses: dreitier/shared-ci-components/trivy-scan@eec1480693feee5edb0272c24f63a398bee80108 # v1.0.0
+        uses: dreitier/shared-ci-components/trivy-scan@c8ebf58b2404cb3f7307c155525c68abfe1fc580 # v1.1.0
         with:
           image: backmon:ci

@@ -249,6 +249,36 @@ jobs:
             -f "client_payload[version]=${VERSION}"
           echo "Requested Helm chart update to backmon ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
 
+  # dreitier/basement opens a PR that deploys this image to our own cluster (.github/workflows/update-app.yml there)
+  deploy:
+    name: Trigger update of our own deployment
+    needs: [semantic-release, image]
+    if: needs.semantic-release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Create GitHub App token for dreitier/basement
+        id: app
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: dreitier
+          repositories: basement
+          # repository_dispatch requires write access to the repository contents
+          permission-contents: write
+
+      - name: Send repository_dispatch to dreitier/basement
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          VERSION: ${{ needs.semantic-release.outputs.version }}
+        run: |
+          gh api --method POST repos/dreitier/basement/dispatches \
+            -f event_type=app-released \
+            -f "client_payload[app]=backmon" \
+            -f "client_payload[version]=${VERSION}"
+          echo "Requested the basement update to backmon ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+
   # backmon-docs is deployed again, so that its landing page shows this version (.github/workflows/deploy.yaml there)
   docs:
     name: Trigger deployment of the documentation

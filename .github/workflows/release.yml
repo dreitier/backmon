@@ -248,3 +248,32 @@ jobs:
             -f event_type=backmon-released \
             -f "client_payload[version]=${VERSION}"
           echo "Requested Helm chart update to backmon ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+
+  # backmon-docs is deployed again, so that its landing page shows this version (.github/workflows/deploy.yaml there)
+  docs:
+    name: Trigger deployment of the documentation
+    needs: [semantic-release, image]
+    if: needs.semantic-release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Create GitHub App token for dreitier/backmon-docs
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: dreitier
+          repositories: backmon-docs
+          # repository_dispatch requires write access to the repository contents
+          permission-contents: write
+
+      - name: Send repository_dispatch to dreitier/backmon-docs
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          VERSION: ${{ needs.semantic-release.outputs.version }}
+        run: |
+          gh api --method POST repos/dreitier/backmon-docs/dispatches \
+            -f event_type=backmon-released \
+            -f "client_payload[version]=${VERSION}"
+          echo "Requested deployment of the documentation for backmon ${VERSION}" >> "$GITHUB_STEP_SUMMARY"

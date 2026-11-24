@@ -303,12 +303,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           languages: go
           build-mode: autobuild
 
-      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           # same category on PRs (ci.yml) and on main (release.yml calls ci.yml), so PRs can be compared with main
           category: /language:go
@@ -389,6 +389,6 @@ jobs:
       # CRITICAL/HIGH with a fix, SARIF to the Security tab (category trivy), exit code 0:
       # reporting only; govulncheck is the blocking gate for Go code
       - name: Scan image with Trivy
-        uses: dreitier/shared-ci-components/trivy-scan@c8ebf58b2404cb3f7307c155525c68abfe1fc580 # v1.1.0
+        uses: dreitier/shared-ci-components/trivy-scan@1ba590342248df7855a136be3420378586d139d6 # v1.2.0
         with:
           image: backmon:ci

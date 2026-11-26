@@ -3,19 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#212121">
   <base href="{{.Base}}">
   <title>backmon</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f766e'/%3E%3Cpath d='M8 11h16M8 16h16M8 21h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -17 290 290'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='50'%3E%3Cpath d='M60 30 L145 82 L230 30' stroke='%23FF5C00'/%3E%3Cpath d='M30 90 L102 135 L102 230' stroke='%23FF2E00'/%3E%3Cpath d='M261 90 L184 135 L184 230' stroke='%23FF9900'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="ui/app.css">
   <script src="ui/app.js" defer></script>
 </head>
 <body>
+  <!-- dark in both color schemes, like the header of dreitier.com -->
   <header class="topbar">
     <a class="brand" href="#/">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M8 11h16M8 16h16M8 21h10"/></svg>
+      <!-- dreitier logo -->
+      <svg viewBox="0 0 76 67" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#ff2e00" fill-rule="evenodd" clip-rule="evenodd" d="M20.1451 40.5607L20.1451 59.4238C20.1245 62.0379 21.4727 64.59 23.8971 65.9919C27.4842 68.0658 32.0814 66.8331 34.1512 63.2459C34.8315 62.0667 35.1572 60.7762 35.1572 59.5021L35.1572 36.2682L35.1572 36.1445C35.1407 34.8086 34.7779 33.5552 34.1512 32.4749C33.5286 31.3906 32.6257 30.4504 31.4753 29.7701C31.4382 29.7495 31.4052 29.7289 31.3681 29.7083L11.2479 18.0934C10.1429 17.4585 8.86476 17.0915 7.5041 17.0915C3.36037 17.0915 4.12622e-05 20.456 4.09851e-05 24.5956C4.07977e-05 27.3951 1.5338 29.8402 3.80981 31.1307L20.1491 40.5643L20.1451 40.5607Z"/>
+        <path fill="#ff9900" fill-rule="evenodd" clip-rule="evenodd" d="M54.8861 40.5614L71.2254 31.1278C73.5013 29.8372 75.0352 27.3963 75.0352 24.5927C75.0352 20.4489 71.6707 17.0886 67.5311 17.0886C66.1704 17.0886 64.8882 17.4514 63.7873 18.0905L43.6671 29.7054C43.63 29.726 43.5929 29.7466 43.5599 29.7672C42.4096 30.4475 41.5066 31.3876 40.884 32.472C40.2573 33.5522 39.8945 34.8056 39.878 36.1416L39.878 36.2653L39.878 59.4992C39.878 60.7732 40.2037 62.0638 40.884 63.243C42.9579 66.8301 47.551 68.0629 51.1381 65.989C53.5625 64.5913 54.9107 62.0391 54.8901 59.4209L54.8901 40.5578L54.8861 40.5614Z"/>
+        <path fill="#ff5c00" fill-rule="evenodd" clip-rule="evenodd" d="M37.5157 10.4741L21.1763 1.0405C18.921 -0.287122 16.0389 -0.394363 13.6145 1.00751C10.0275 3.07727 8.79464 7.67456 10.8685 11.2616C11.5488 12.4408 12.5054 13.3685 13.6063 14.0035L33.7265 25.6184C33.7636 25.639 33.8007 25.6596 33.8337 25.6802C34.9964 26.3358 36.2663 26.645 37.5156 26.645C38.7649 26.645 40.0348 26.3358 41.1976 25.6802C41.2347 25.6596 41.2718 25.639 41.3048 25.6184L61.4249 14.0035C62.5258 13.3686 63.4823 12.4408 64.1627 11.2616C66.2325 7.67456 65.0038 3.07727 61.4167 1.00752C58.9923 -0.390189 56.1062 -0.283055 53.8549 1.04051L37.5157 10.4741Z"/>
+      </svg>
       <span>backmon</span>
     </a>
-    <nav>
+    <nav aria-label="Main">
       <a href="#/" data-view="summary">Summary</a>
       <a href="#/api" data-view="browser">API browser</a>
       <a href="metrics" target="_blank" rel="noopener">Metrics</a>

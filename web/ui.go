@@ -27,7 +27,13 @@ var uiIndex = template.Must(template.ParseFS(uiAssets, "index.html"))
 
 // uiContentSecurityPolicy only allows the UI's own scripts and styles and requests to the same origin
 const uiContentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
-	"connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+	"font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+
+// uiContentTypes are the media types of assets which the mime package only knows from the files of the operating
+// system; the container image has none of them
+var uiContentTypes = map[string]string{
+	".woff2": "font/woff2",
+}
 
 func mustSub(fsys fs.FS, dir string) fs.FS {
 	sub, err := fs.Sub(fsys, dir)
@@ -79,7 +85,7 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(page.Bytes())
 }
 
-// uiAsset is a script or stylesheet of the web UI
+// uiAsset is a script, stylesheet or font of the web UI
 type uiAsset struct {
 	contentType string
 	content     []byte
@@ -102,7 +108,11 @@ func mustLoadUIAssets(fsys fs.FS) map[string]uiAsset {
 			return err
 		}
 
-		contentType := mime.TypeByExtension(path.Ext(name))
+		contentType := uiContentTypes[path.Ext(name)]
+		if contentType == "" {
+			contentType = mime.TypeByExtension(path.Ext(name))
+		}
+
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}

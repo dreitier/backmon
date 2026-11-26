@@ -43,6 +43,11 @@ func TestRouter_rootServesTheWebUIToBrowsers(t *testing.T) {
 	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") {
 		t.Errorf("Content-Security-Policy = %q, want only the UI's own scripts", csp)
 	}
+
+	// the fonts of the UI are embedded, the stylesheet may only load them from the same origin
+	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "font-src 'self'") {
+		t.Errorf("Content-Security-Policy = %q, want the UI's own fonts", csp)
+	}
 }
 
 // The page is not protected by Basic Auth: it contains no data, the browser asks for the credentials once the UI
@@ -87,6 +92,8 @@ func TestRouter_servesWebUIAssets(t *testing.T) {
 	}{
 		{"/ui/app.js", "text/javascript"},
 		{"/ui/app.css", "text/css"},
+		{"/ui/fonts/work-sans-latin-wght-normal.woff2", "font/woff2"},
+		{"/ui/fonts/jetbrains-mono-latin-wght-normal.woff2", "font/woff2"},
 	}
 
 	for _, tc := range tests {
